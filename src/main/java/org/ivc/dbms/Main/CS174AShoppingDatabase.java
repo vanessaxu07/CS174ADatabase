@@ -14,7 +14,7 @@ import java.util.Scanner;
  *
  * @author vanessaxu
  */
-public class CS74AShoppingDatabase {
+public class CS174AShoppingDatabase {
 
 static Connection con = null;
     static Scanner scanner = new Scanner(System.in);
@@ -30,7 +30,6 @@ static Connection con = null;
             con.setAutoCommit(false);
             System.out.println("Connected!");
 
-            // Simple menu
             boolean running = true;
             while (running) {
                 System.out.println("\n--- Shopping Database ---");
@@ -64,7 +63,6 @@ static Connection con = null;
         }
     }
 
-    // 1. View all products
     static void viewProducts() throws SQLException {
         Statement stmt = con.createStatement();
         ResultSet rs = stmt.executeQuery("SELECT StockNumber, Category, Manufacturer, Price FROM Products");
@@ -83,7 +81,6 @@ static Connection con = null;
         stmt.close();
     }
 
-    // 2. Search product by stock number (PreparedStatement with ? parameter)
     static void searchProduct() throws SQLException {
         System.out.print("Enter stock number: ");
         String stockNum = scanner.nextLine();
@@ -105,7 +102,6 @@ static Connection con = null;
         ps.close();
     }
 
-    // 3. Add a customer (INSERT with parameters)
     static void addCustomer() throws SQLException {
         System.out.print("Enter ID: ");       String id   = scanner.nextLine();
         System.out.print("Enter Name: ");     String name = scanner.nextLine();
