@@ -72,3 +72,6 @@ CREATE TABLE ReplenishmentOrder (
     CHECK (quantity_ordered > 0),
     CHECK (LOWER(status) IN ('pending', 'ordered', 'received', 'cancelled'))
 );
+
+
+
