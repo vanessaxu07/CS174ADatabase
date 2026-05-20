@@ -3,7 +3,7 @@ CREATE TABLE Products(
     Category CHAR(20),
     Manufacturer CHAR(20),
     ModelNumber CHAR(20),
-    Warranty CHAR(20),
+    Warranty INT,
     Price REAL,
     CompatibleWithNumber CHAR(20),
     PRIMARY KEY(StockNumber),
