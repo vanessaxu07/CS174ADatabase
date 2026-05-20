@@ -43,9 +43,9 @@ static Connection con = null;
                 scanner.nextLine(); 
 
                 if(choice == 1) viewProducts();
-                if(choice == 2) searchProduct();
-                if(choice == 3) addCustomer();
-                if(choice == 4) running = false;
+                else if(choice == 2) searchProduct();
+                else if(choice == 3) addCustomer();
+                else if(choice == 4) running = false;
                 else System.out.println("Invalid Choice");
             }
 
@@ -80,6 +80,7 @@ static Connection con = null;
         rs.close();
         stmt.close();
     }
+    //MATCH THE VARIABLE TYPES APPROPRIATELY
 
     static void searchProduct() throws SQLException {
         System.out.print("Enter stock number: ");
