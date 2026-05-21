@@ -18,6 +18,7 @@ public class CS174AShoppingDatabase {
 
 
     //ENSURE THE SPECIFIC FORMAT VIOLATIONS (like stock number) ARE HANDLED
+
 static Connection con = null;
     static Scanner scanner = new Scanner(System.in);
 
@@ -47,6 +48,8 @@ static Connection con = null;
                 System.out.println("9. View order history");
                 System.out.println("10. Add product description");
                 System.out.println("11. View product description");
+ 
+                //I THINK STILL NEED TO ADD SHOPPING_CART CARTID TO CREATE THE CART
                 System.out.println("12. Exit");
                 System.out.print("Choose: ");
 
