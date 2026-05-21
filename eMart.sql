@@ -9,7 +9,7 @@ CREATE TABLE Products(
     PRIMARY KEY(StockNumber),
     FOREIGN KEY (CompatibleWithNumber) REFERENCES Products(StockNumber),
     CHECK (Price >= 0),
-    CHECK (REGEXP_LIKE(StockNumber, '^[A-Z]{2}[0-9]{5}$'))
+    CHECK (REGEXP_LIKE(TRIM(StockNumber), '^[A-Z]{2}[0-9]{5}$'))
 );
 CREATE TABLE Customer(
     Identifier CHAR(20),
@@ -26,8 +26,7 @@ CREATE TABLE Product_Description(
     AttributeValue CHAR(20),
     PRIMARY KEY (StockNumber, AttributeName),
     FOREIGN KEY (StockNumber) REFERENCES Products(StockNumber),
-    CHECK (REGEXP_LIKE(StockNumber, '^[A-Z]{2}[0-9]{5}$'))
-
+    CHECK (REGEXP_LIKE(TRIM(StockNumber), '^[A-Z]{2}[0-9]{5}$'))
 );
 CREATE TABLE Shopping_Cart(
     CartId CHAR(20),
@@ -57,8 +56,7 @@ CREATE TABLE Cart_Items(
     FOREIGN KEY (StockNumber) REFERENCES Products(StockNumber),
     FOREIGN KEY (CartId) REFERENCES Shopping_Cart(CartId), 
     CHECK (Quantity >= 0),
-    CHECK (REGEXP_LIKE(StockNumber, '^[A-Z]{2}[0-9]{5}$'))
-
+    CHECK (REGEXP_LIKE(TRIM(StockNumber), '^[A-Z]{2}[0-9]{5}$'))
 );
 CREATE TABLE Order_Item(
     StockNumber CHAR(20),
@@ -68,14 +66,14 @@ CREATE TABLE Order_Item(
     FOREIGN KEY (StockNumber) REFERENCES Products(StockNumber),
     FOREIGN KEY (OrderNum) REFERENCES Customer_Orders(OrderNum),
     CHECK (Quantity >= 0),
-    CHECK (REGEXP_LIKE(StockNumber, '^[A-Z]{2}[0-9]{5}$'))
+    CHECK (REGEXP_LIKE(TRIM(StockNumber), '^[A-Z]{2}[0-9]{5}$'))
 
 );
 
 DROP TABLE Order_Item CASCADE CONSTRAINTS;
-DROP TABLE Products CASCADE CONSTRAINTS;
-DROP TABLE Product_Description CASCADE CONSTRAINTS;
 DROP TABLE Cart_Items CASCADE CONSTRAINTS;
-
-
-
+DROP TABLE Product_Description CASCADE CONSTRAINTS;
+DROP TABLE Shopping_Cart CASCADE CONSTRAINTS;
+DROP TABLE Customer_Orders CASCADE CONSTRAINTS;
+DROP TABLE Products CASCADE CONSTRAINTS;
+DROP TABLE Customer CASCADE CONSTRAINTS;

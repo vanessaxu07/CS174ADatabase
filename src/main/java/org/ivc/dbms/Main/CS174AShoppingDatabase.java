@@ -49,8 +49,8 @@ static Connection con = null;
                 System.out.println("10. Add product description");
                 System.out.println("11. View product description");
  
-                //I THINK STILL NEED TO ADD SHOPPING_CART CARTID TO CREATE THE CART
-                System.out.println("12. Exit");
+                System.out.println("12. Create cart");
+                System.out.println("13. Exit");
                 System.out.print("Choose: ");
 
                 int choice = scanner.nextInt();
@@ -65,9 +65,10 @@ static Connection con = null;
                 else if(choice == 7) removeFromCart();
                 else if(choice == 8) placeOrder();
                 else if(choice == 9) viewOrderHistory();
-                else if(choice == 10) viewProductDescription();
-                else if(choice == 11) addProductDescription();
-                else if(choice == 12) running = false;
+                else if(choice == 10) addProductDescription();
+                else if(choice == 11) viewProductDescription();
+                else if(choice == 12) createCart();
+                else if(choice == 13) running = false;
                 else System.out.println("Invalid Choice");
             }
 
@@ -196,22 +197,18 @@ static void addToCart() throws SQLException {
     productRs.close();
     productCheck.close();
 
-    PreparedStatement check = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE TRIM(CartId) = TRIM(?)"
-    );
+   PreparedStatement check = con.prepareStatement(
+    "SELECT CartId FROM Shopping_Cart WHERE TRIM(CartId) = TRIM(?)"
+);
     check.setString(1, cartId);
     ResultSet rs = check.executeQuery();
     if (!rs.next()) {
-        PreparedStatement ps1 = con.prepareStatement(
-            "INSERT INTO Shopping_Cart (CartId, CreatedDate, Identifier) VALUES (?, ?, ?)"
-        );
-        ps1.setString(1, cartId);
-        ps1.setString(2, java.time.LocalDate.now().toString());
-        ps1.setString(3, customerId);
-        ps1.executeUpdate();
-        ps1.close();
+        System.out.println("Cart not found! Please create a cart first.");
+        rs.close(); 
+        check.close(); 
+        return; 
     }
-    rs.close();
+    rs.close(); 
     check.close();
 
     // Insert into Cart_Items
@@ -493,6 +490,46 @@ static void addProductDescription() throws SQLException {
     ps.executeUpdate();
     con.commit();
     System.out.println("Description added!");
+    ps.close();
+}
+static void createCart() throws SQLException {
+    System.out.print("Enter Customer ID: "); String customerId = scanner.nextLine();
+    System.out.print("Enter Cart ID: ");     String cartId     = scanner.nextLine();
+    PreparedStatement custCheck = con.prepareStatement(
+        "SELECT Identifier FROM Customer WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    custCheck.setString(1, customerId);
+    ResultSet custRs = custCheck.executeQuery();
+    if (!custRs.next()) {
+        System.out.println("Customer not found! Please add customer first.");
+        custRs.close(); 
+        custCheck.close(); 
+        return;
+    }
+    custRs.close();    
+    custCheck.close();
+    PreparedStatement cartCheck = con.prepareStatement(
+        "SELECT CartId FROM Shopping_Cart WHERE TRIM(CartId) = TRIM(?)"
+    );
+    cartCheck.setString(1, cartId);
+    ResultSet cartRs = cartCheck.executeQuery();
+    if (cartRs.next()) {
+        System.out.println("Cart ID already exists! Please use a different ID.");
+        cartRs.close(); 
+        cartCheck.close(); 
+        return;
+    }
+    cartRs.close(); 
+    cartCheck.close();
+    PreparedStatement ps = con.prepareStatement(
+        "INSERT INTO Shopping_Cart (CartId, CreatedDate, Identifier) VALUES (?, ?, ?)"
+    );
+    ps.setString(1, cartId);
+    ps.setString(2, java.time.LocalDate.now().toString());
+    ps.setString(3, customerId);
+    ps.executeUpdate();
+    con.commit();
+    System.out.println("Cart " + cartId + " created!");
     ps.close();
 }
 }
