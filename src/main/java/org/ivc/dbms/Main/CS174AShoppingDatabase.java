@@ -64,6 +64,10 @@ static Connection con = null;
     }
 }
 
+//I THINK WE SHOULD AUTO GENERATE EACH NEW CUSTOMER'S CARTID FROM THE BEGINNING 
+// AND PUT IT INTO SHOPPING CART (BASICALLY CREATE THE SHOPPING CART WHEN A NEW 
+// CUSTOMER IS ADDED including created date and id of customer). 
+// ORDERNUM ID SHOULD ALR BE SET TO AUTOGENERATE.
 static void customerLogin() throws SQLException {
     System.out.print("Enter Customer ID: "); String id   = scanner.nextLine();
     System.out.print("Enter Password: ");    String pass = scanner.nextLine();
