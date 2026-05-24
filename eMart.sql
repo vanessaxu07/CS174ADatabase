@@ -172,3 +172,38 @@ INSERT INTO Customer VALUES ('Swong', 'Swong', 'Sarah Wong', 'swong@ce', '77 Ced
 INSERT INTO Customer VALUES ('Tcodd', 'Tcodd', 'Ted Codd', 'tcodd@db', '123 Database St, Data, CA 93116', 'Gold');
 
 COMMIT;
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00101', 'HP', 'A6111', 15, 2, 50, 'A1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00201', 'Dell', 'B420', 20, 2, 50, 'B1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00202', 'eMachines', 'C3958', 10, 2, 40, 'B2', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00301', 'Envision', 'D720', 25, 5, 60, 'C1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00302', 'Samsung', 'E712', 12, 3, 40, 'C2', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00401', 'Symantec', 'F2005', 30, 5, 100, 'D1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00402', 'McAfee', 'G2005', 28, 5, 100, 'D2', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00403', 'Oracle', 'H26', 18, 4, 80, 'D3', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00501', 'HP', 'J1320', 8, 1, 25, 'E1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00601', 'HP', 'K435', 14, 2, 35, 'F1', 0);
+
+INSERT INTO InventoryProduct 
+VALUES ('AA00602', 'Canon', 'L738', 9, 2, 30, 'F2', 0);
+
+COMMIT;
