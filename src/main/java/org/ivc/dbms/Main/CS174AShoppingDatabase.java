@@ -19,19 +19,35 @@ public class CS174AShoppingDatabase {
 
     //ENSURE THE SPECIFIC FORMAT VIOLATIONS (like stock number) ARE HANDLED
 
-static Connection con = null;
+    static Connection con = null;
     static Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
     try {
-        Class.forName("oracle.jdbc.driver.OracleDriver");
-        con = DriverManager.getConnection(
-            "jdbc:oracle:thin:@CS174AShoppingDatabase_low?TNS_ADMIN=/Users/vanessaxu/Downloads/Wallet_CS174AShoppingDatabase",
-            "ADMIN",
-            "Vicecreamlover*1"
-        );
-        con.setAutoCommit(false);
-        System.out.println("Connected!");
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+
+            String tnsAdmin = System.getenv("TNS_ADMIN");
+            String dbUser = System.getenv("DB_USER");
+            String dbPassword = System.getenv("DB_PASSWORD");
+
+            if (tnsAdmin != null && !tnsAdmin.isBlank()) {
+                System.setProperty("oracle.net.tns_admin", tnsAdmin);
+            }
+            if (dbUser == null || dbUser.isBlank()) {
+                dbUser = "ADMIN";
+            }
+            if (dbPassword == null || dbPassword.isBlank()) {
+                System.out.println("Missing DB_PASSWORD environment variable.");
+                return;
+            }
+
+            con = DriverManager.getConnection(
+                    "jdbc:oracle:thin:@CS174AShoppingDatabase_low",
+                    dbUser,
+                    dbPassword
+            );
+            con.setAutoCommit(false);
+            System.out.println("Connected!");
 
         boolean running = true;
         while (running) {
@@ -114,7 +130,21 @@ static void customerLogin() throws SQLException {
     insertPs.close();
 
     System.out.println("New customer account created!");
-}
+    String cartId = "CART-" + System.currentTimeMillis();
+
+    PreparedStatement cartInsert = con.prepareStatement(
+    "INSERT INTO Shopping_Cart (CartId, CreatedDate, Identifier) VALUES (?, ?, ?)"
+    );
+
+    cartInsert.setString(1, cartId);
+    cartInsert.setDate(2, java.sql.Date.valueOf(java.time.LocalDate.now()));
+    cartInsert.setString(3, id);
+
+    cartInsert.executeUpdate();
+    cartInsert.close();
+
+    System.out.println("Cart created for customer: " + cartId);
+    }
 
     rs.close();
     checkPs.close();
@@ -164,8 +194,8 @@ static void runCustomerMenu(String customerId) throws SQLException {
 
         if (choice == 1)       viewProducts();
         else if (choice == 2)  searchProduct();
-        else if (choice == 3)  viewCart();
-        else if (choice == 4)  removeFromCart();
+        else if (choice == 3)  viewCart(customerId);
+        else if (choice == 4)  removeFromCart(customerId);
         else if (choice == 5)  placeOrder(customerId);
         else if (choice == 6)  viewOrderHistory(customerId);
         else if (choice == 7)  viewProductDescription();
@@ -243,7 +273,20 @@ static void runManagerMenu() throws SQLException {
     }
 
 static void addToCart(String customerId) throws SQLException {
-    System.out.print("Enter Cart ID: ");      String cartId     = scanner.nextLine();
+PreparedStatement getCart = con.prepareStatement(
+    "SELECT CartId FROM Shopping_Cart WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    getCart.setString(1, customerId);
+    ResultSet rs1 = getCart.executeQuery();
+
+    if (!rs1.next()) {
+    System.out.println("No cart found for customer!");
+    return;
+    }
+
+    String cartId = rs1.getString("CartId").trim();
+    rs1.close();
+    getCart.close();
     System.out.print("Enter Stock Number: "); String stockNum   = scanner.nextLine();
     System.out.print("Enter Quantity: ");     int quantity      = Integer.parseInt(scanner.nextLine());
 
@@ -302,8 +345,21 @@ static void addToCart(String customerId) throws SQLException {
     ps2.close();
 }
 
-    static void viewCart() throws SQLException {
-    System.out.print("Enter Cart ID: "); String cartId = scanner.nextLine();
+    static void viewCart(String customerId) throws SQLException {
+    PreparedStatement getCart = con.prepareStatement(
+        "SELECT CartId FROM Shopping_Cart WHERE TRIM(Identifier)=TRIM(?)"
+    );
+    getCart.setString(1, customerId);
+    ResultSet rs2 = getCart.executeQuery();
+
+    if (!rs2.next()) {
+        System.out.println("No cart found.");
+        return;
+    }
+
+    String cartId = rs2.getString("CartId").trim();
+    rs2.close();
+    getCart.close();
 
     PreparedStatement ps = con.prepareStatement(
         "SELECT ci.StockNumber, p.Manufacturer, p.Price, ci.Quantity " +
@@ -331,18 +387,27 @@ static void addToCart(String customerId) throws SQLException {
     ps.close();
 }
 
-static void removeFromCart() throws SQLException {
-    System.out.print("Enter Cart ID: ");      String cartId   = scanner.nextLine();
+static void removeFromCart(String customerId) throws SQLException {
+    PreparedStatement getCart = con.prepareStatement(
+        "SELECT CartId FROM Shopping_Cart WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    getCart.setString(1, customerId);
+    ResultSet cartRs = getCart.executeQuery();
+    if (!cartRs.next()) {
+        System.out.println("No cart found!");
+        cartRs.close(); getCart.close(); return;
+    }
+    String cartId = cartRs.getString("CartId").trim();
+    cartRs.close(); getCart.close();
+
     System.out.print("Enter Stock Number: "); String stockNum = scanner.nextLine();
 
     PreparedStatement ps = con.prepareStatement(
-        "DELETE FROM Cart_Items " +
-        "WHERE TRIM(CartId) = TRIM(?) AND TRIM(StockNumber) = TRIM(?)"
+        "DELETE FROM Cart_Items WHERE TRIM(CartId) = TRIM(?) AND TRIM(StockNumber) = TRIM(?)"
     );
     ps.setString(1, cartId);
     ps.setString(2, stockNum);
     int rows = ps.executeUpdate();
-
     if (rows > 0) {
         con.commit();
         System.out.println("Item removed from cart!");
@@ -353,185 +418,130 @@ static void removeFromCart() throws SQLException {
 }
 
 static void placeOrder(String customerId) throws SQLException {
-    String orderNum = "ORD-" + System.currentTimeMillis();
-    System.out.print("Enter Cart ID: ");      
-    String cartId = scanner.nextLine();
-    System.out.print("Enter Stock Number: "); 
-    String stockNum = scanner.nextLine();
-    System.out.print("Enter Quantity: ");     
-    int quantity = Integer.parseInt(scanner.nextLine());
-    System.out.print("Enter Shipping Method: "); 
-    String shippingMethod = scanner.nextLine();
-    placeOrder(customerId, orderNum, stockNum, quantity, shippingMethod, cartId);
+    PreparedStatement getCart = con.prepareStatement(
+        "SELECT CartId FROM Shopping_Cart WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    getCart.setString(1, customerId);
+    ResultSet cartRs = getCart.executeQuery();
+    if (!cartRs.next()) {
+        System.out.println("No cart found!");
+        cartRs.close(); 
+        getCart.close(); return;
+    }
+    String cartId = cartRs.getString("CartId").trim();
+    cartRs.close(); getCart.close();
+
+    System.out.print("Enter Shipping Method: "); String shippingMethod = scanner.nextLine();
+    placeOrder(customerId, cartId, shippingMethod);
 }
-static void placeOrder(String customerId, String orderNum, String stockNum, int quantity, String shippingMethod, String cartId) throws SQLException {
+static void placeOrder(String customerId, String cartId, String shippingMethod) throws SQLException {
 
-    PreparedStatement custCheck = con.prepareStatement(
-        "SELECT Identifier, Status FROM Customer WHERE TRIM(Identifier) = TRIM(?)"
+    String orderNum = "ORD-" + System.currentTimeMillis();
+
+    PreparedStatement ps = con.prepareStatement(
+        "SELECT ci.StockNumber, ci.Quantity, p.Price " +
+        "FROM Cart_Items ci, Products p " +
+        "WHERE TRIM(ci.CartId)=TRIM(?) AND TRIM(ci.StockNumber)=TRIM(p.StockNumber)"
     );
-    custCheck.setString(1, customerId);
-    ResultSet custRs = custCheck.executeQuery();
-    if (!custRs.next()) {
-        System.out.println("Customer not found!");
-        custRs.close(); 
-        custCheck.close(); 
+
+    ps.setString(1, cartId);
+    ResultSet rs = ps.executeQuery();
+
+    double subtotal = 0;
+
+    boolean hasItems = false;
+
+    while (rs.next()) {
+        hasItems = true;
+
+        String stockNum = rs.getString("StockNumber").trim();
+        int qty = rs.getInt("Quantity");
+        double price = rs.getDouble("Price");
+
+        subtotal += price * qty;
+
+        PreparedStatement oi = con.prepareStatement(
+            "INSERT INTO Order_Item (StockNumber, OrderNum, Quantity) VALUES (?, ?, ?)"
+        );
+        oi.setString(1, stockNum);
+        oi.setString(2, orderNum);
+        oi.setInt(3, qty);
+        oi.executeUpdate();
+        oi.close();
+
+        PreparedStatement inv = con.prepareStatement(
+            "UPDATE InventoryProduct SET quantity = quantity - ? WHERE TRIM(stock_number)=TRIM(?)"
+        );
+        inv.setInt(1, qty);
+        inv.setString(2, stockNum);
+        inv.executeUpdate();
+        inv.close();
+    }
+
+    rs.close();
+    ps.close();
+
+    if (!hasItems) {
+        System.out.println("Cart is empty!");
         return;
     }
-    String status = custRs.getString("Status").trim().toLowerCase();
-    custRs.close(); 
-    custCheck.close();
 
-    PreparedStatement cartCheck = con.prepareStatement(
-        "SELECT COUNT(*) FROM Cart_Items WHERE TRIM(CartId) = TRIM(?)"
+    PreparedStatement cust = con.prepareStatement(
+        "SELECT Status FROM Customer WHERE TRIM(Identifier)=TRIM(?)"
     );
-    cartCheck.setString(1, cartId);
-    ResultSet cartRs = cartCheck.executeQuery();
-    cartRs.next();
-    int itemCount = cartRs.getInt(1);
-    cartRs.close(); cartCheck.close();
-    if (itemCount == 0) {
-        System.out.println("Cart is empty! Please add items before placing an order.");
-        return;
-    }
+    cust.setString(1, customerId);
+    ResultSet crs = cust.executeQuery();
+    crs.next();
+    String status = crs.getString(1).trim();
+    crs.close();
+    cust.close();
 
-    PreparedStatement prodCheck = con.prepareStatement(
-        "SELECT Price FROM Products WHERE TRIM(StockNumber) = TRIM(?)"
-    );
-    prodCheck.setString(1, stockNum);
-    ResultSet prodRs = prodCheck.executeQuery();
-    if (!prodRs.next()) {
-        System.out.println("Product not found!");
-        prodRs.close(); 
-        prodCheck.close(); 
-        return;
-    }
-    double price = prodRs.getDouble("Price");
-    prodRs.close(); 
-    prodCheck.close();
+    double discountRate = 
+    switch (status.toLowerCase()) {
+        case "gold", "new" -> 0.10;
+        case "silver" -> 0.05;
+        default -> 0.0;
+    };
 
-    PreparedStatement invCheck = con.prepareStatement(
-        "SELECT quantity FROM InventoryProduct WHERE TRIM(stock_number) = TRIM(?)"
-    );
-    invCheck.setString(1, stockNum);
-    ResultSet invRs = invCheck.executeQuery();
-    if (!invRs.next()) {
-        System.out.println("Product not in inventory!");
-        invRs.close(); 
-        invCheck.close(); 
-        return;
-    }
-    int currentQty = invRs.getInt("quantity");
-    invRs.close(); invCheck.close();
-    if (currentQty < quantity) {
-        System.out.println("Not enough inventory! Available: " + currentQty);
-        return;
-    }
+    double discount = subtotal * discountRate;
+    double afterDiscount = subtotal - discount;
 
-    double discountRate = 0.0;
-    if (status.equals("gold") || status.equals("new")) {
-        discountRate = 0.10;
-    } else if (status.equals("silver")) {
-        discountRate = 0.05;
-    }
-
-    double subtotal = price * quantity;
-    double discountAmt = subtotal * discountRate;
-    double afterDiscount = subtotal - discountAmt;
-
-    double shippingFee = 0.0;
-    if (afterDiscount <= 100 && !status.equals("new")) {
+    double shippingFee = 0;
+    if (afterDiscount <= 100 && !status.equalsIgnoreCase("new")) {
         shippingFee = afterDiscount * 0.10;
     }
 
     double total = afterDiscount + shippingFee;
 
-    System.out.println("\n--- Order Summary ---");
-    System.out.println("Customer Status: " + status);
-    System.out.println("Subtotal:        $" + subtotal);
-    System.out.println("Discount (" + (int)(discountRate * 100) + "%): -$" + discountAmt);
-    System.out.println("Shipping:        $" + shippingFee);
-    System.out.println("Total:           $" + total);
-    System.out.print("Confirm order? (y/n): ");
-    String confirm = scanner.nextLine();
-    if (!confirm.equalsIgnoreCase("y")) {
-        System.out.println("Order cancelled.");
-        return;
-    }
-
-    PreparedStatement ps1 = con.prepareStatement(
-        "INSERT INTO Customer_Orders (OrderNum, Subtotal, OrderDate, Discount, Shipping, Total, Identifier) " +
+    PreparedStatement order = con.prepareStatement(
+        "INSERT INTO Customer_Orders " +
+        "(OrderNum, Subtotal, OrderDate, Discount, Shipping, Total, Identifier) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
-    ps1.setString(1, orderNum);
-    ps1.setDouble(2, subtotal);
-    ps1.setString(3, java.time.LocalDate.now().toString());
-    ps1.setDouble(4, discountAmt);
-    ps1.setString(5, shippingMethod);
-    ps1.setDouble(6, total);
-    ps1.setString(7, customerId);
-    ps1.executeUpdate();
-    ps1.close();
 
-    PreparedStatement ps2 = con.prepareStatement(
-        "INSERT INTO Order_Item (StockNumber, OrderNum, Quantity) VALUES (?, ?, ?)"
+    order.setString(1, orderNum);
+    order.setDouble(2, subtotal);
+    order.setDate(3, java.sql.Date.valueOf(java.time.LocalDate.now()));
+    order.setDouble(4, discount);
+    order.setString(5, shippingMethod);
+    order.setDouble(6, total);
+    order.setString(7, customerId);
+
+    order.executeUpdate();
+    order.close();
+
+    PreparedStatement clear = con.prepareStatement(
+        "DELETE FROM Cart_Items WHERE TRIM(CartId)=TRIM(?)"
     );
-    ps2.setString(1, stockNum);
-    ps2.setString(2, orderNum);
-    ps2.setInt(3, quantity);
-    ps2.executeUpdate();
-    ps2.close();
-
-    PreparedStatement ps3 = con.prepareStatement(
-        "UPDATE InventoryProduct SET quantity = quantity - ? " +
-        "WHERE TRIM(stock_number) = TRIM(?)"
-    );
-    ps3.setInt(1, quantity);
-    ps3.setString(2, stockNum);
-    ps3.executeUpdate();
-    ps3.close();
-
-    PreparedStatement statusUpdate = con.prepareStatement(
-        "SELECT SUM(Total) FROM (" +
-        "SELECT Total FROM Customer_Orders " +
-        "WHERE TRIM(Identifier) = TRIM(?) " +
-        "ORDER BY OrderDate DESC FETCH FIRST 3 ROWS ONLY)"
-    );
-    statusUpdate.setString(1, customerId);
-    ResultSet statusRs = statusUpdate.executeQuery();
-    statusRs.next();
-    double last3Total = statusRs.getDouble(1);
-    statusRs.close(); 
-    statusUpdate.close();
-
-    String newStatus;
-    if (last3Total > 500) {
-        newStatus = "gold";
-    } else if (last3Total > 100) {
-        newStatus = "silver";
-    } else if (last3Total > 0) {
-        newStatus = "green";
-    } else {
-        newStatus = "new";
-    }
-
-    PreparedStatement updateStatus = con.prepareStatement(
-        "UPDATE Customer SET Status = ? WHERE TRIM(Identifier) = TRIM(?)"
-    );
-    PreparedStatement clearCart = con.prepareStatement(
-    "DELETE FROM Cart_Items WHERE TRIM(CartId) = TRIM(?)"
-);
-    clearCart.setString(1, cartId);
-    clearCart.executeUpdate();
-    clearCart.close();
-
-    updateStatus.setString(1, newStatus);
-    updateStatus.setString(2, customerId);
-    updateStatus.executeUpdate();
-    updateStatus.close();
+    clear.setString(1, cartId);
+    clear.executeUpdate();
+    clear.close();
 
     con.commit();
-    System.out.println("\nOrder placed! Order#: " + orderNum + " | Total: $" + total);
-    System.out.println("Customer status updated to: " + newStatus);
+
+    System.out.println("\nOrder placed!");
+    System.out.println("Order#: " + orderNum);
+    System.out.println("Total: $" + total);
 }
 
 static void viewOrderHistory(String customerId) throws SQLException {
@@ -625,7 +635,8 @@ static void viewOrderByNumber() throws SQLException {
     ps.close();
 }
 static void rerunOrder(String customerId) throws SQLException {
-    System.out.print("Enter Order Number to re-run: "); String oldOrderNum = scanner.nextLine();
+    System.out.print("Enter Order Number to re-run: ");
+    String oldOrderNum = scanner.nextLine();
 
     PreparedStatement ps = con.prepareStatement(
         "SELECT o.Shipping, oi.StockNumber, oi.Quantity " +
@@ -648,27 +659,222 @@ static void rerunOrder(String customerId) throws SQLException {
     int quantity    = rs.getInt("Quantity");
     rs.close(); ps.close();
 
-    PreparedStatement cartFind = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE TRIM(Identifier) = TRIM(?)"
+    PreparedStatement pricePs = con.prepareStatement(
+        "SELECT Price FROM Products WHERE TRIM(StockNumber) = TRIM(?)"
     );
-    cartFind.setString(1, customerId);
-    ResultSet cartRs = cartFind.executeQuery();
-    if (!cartRs.next()) {
-        System.out.println("No cart found! Please create a cart first.");
-        cartRs.close(); 
-        cartFind.close(); 
+    pricePs.setString(1, stockNum);
+    ResultSet priceRs = pricePs.executeQuery();
+    if (!priceRs.next()) {
+        System.out.println("Product no longer exists!");
+        priceRs.close(); pricePs.close(); return;
+    }
+    double price = priceRs.getDouble("Price");
+    priceRs.close(); pricePs.close();
+
+    PreparedStatement invCheck = con.prepareStatement(
+        "SELECT quantity FROM InventoryProduct WHERE TRIM(stock_number) = TRIM(?)"
+    );
+    invCheck.setString(1, stockNum);
+    ResultSet invRs = invCheck.executeQuery();
+    if (!invRs.next()) {
+        System.out.println("Product not in inventory!");
+        invRs.close(); invCheck.close(); return;
+    }
+    int currentQty = invRs.getInt("quantity");
+    invRs.close(); invCheck.close();
+    if (currentQty < quantity) {
+        System.out.println("Not enough inventory! Available: " + currentQty);
         return;
     }
-    String cartId = cartRs.getString("CartId").trim();
-    cartRs.close(); 
-    cartFind.close();
+
+    PreparedStatement custPs = con.prepareStatement(
+        "SELECT Status FROM Customer WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    custPs.setString(1, customerId);
+    ResultSet custRs = custPs.executeQuery();
+    custRs.next();
+    String status = custRs.getString("Status").trim();
+    custRs.close(); custPs.close();
+
+    double discountRate = switch (status.toLowerCase()) {
+        case "gold", "new" -> 0.10;
+        case "silver"      -> 0.05;
+        default            -> 0.0;
+    };
+
+    double subtotal      = price * quantity;
+    double discount      = subtotal * discountRate;
+    double afterDiscount = subtotal - discount;
+    double shippingFee   = 0;
+    if (afterDiscount <= 100 && !status.equalsIgnoreCase("new")) {
+        shippingFee = afterDiscount * 0.10;
+    }
+    double total = afterDiscount + shippingFee;
+
+    System.out.println("\n--- Re-run Order Summary ---");
+    System.out.println("Customer Status: " + status);
+    System.out.printf("Subtotal:        $%.2f%n", subtotal);
+    System.out.printf("Discount (%d%%):   -$%.2f%n", (int)(discountRate * 100), discount);
+    System.out.printf("Shipping:        $%.2f%n", shippingFee);
+    System.out.printf("Total:           $%.2f%n", total);
+    System.out.print("Confirm order? (y/n): ");
+    String confirm = scanner.nextLine();
+    if (!confirm.equalsIgnoreCase("y")) {
+        System.out.println("Order cancelled.");
+        return;
+    }
 
     String newOrderNum = "ORD-" + System.currentTimeMillis();
-    System.out.println("Re-running order with Stock#: " + stockNum + " Qty: " + quantity);
-    placeOrder(customerId, newOrderNum, stockNum, quantity, shipping, cartId);
-}
-static void monthlySummary() throws SQLException { 
 
+    PreparedStatement orderPs = con.prepareStatement(
+        "INSERT INTO Customer_Orders " +
+        "(OrderNum, Subtotal, OrderDate, Discount, Shipping, Total, Identifier) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+    orderPs.setString(1, newOrderNum);
+    orderPs.setDouble(2, subtotal);
+    orderPs.setDate(3, java.sql.Date.valueOf(java.time.LocalDate.now()));
+    orderPs.setDouble(4, discount);
+    orderPs.setString(5, shipping);
+    orderPs.setDouble(6, total);
+    orderPs.setString(7, customerId);
+    orderPs.executeUpdate();
+    orderPs.close();
+
+    PreparedStatement oiPs = con.prepareStatement(
+        "INSERT INTO Order_Item (StockNumber, OrderNum, Quantity) VALUES (?, ?, ?)"
+    );
+    oiPs.setString(1, stockNum);
+    oiPs.setString(2, newOrderNum);
+    oiPs.setInt(3, quantity);
+    oiPs.executeUpdate();
+    oiPs.close();
+
+    PreparedStatement invPs = con.prepareStatement(
+        "UPDATE InventoryProduct SET quantity = quantity - ? WHERE TRIM(stock_number) = TRIM(?)"
+    );
+    invPs.setInt(1, quantity);
+    invPs.setString(2, stockNum);
+    invPs.executeUpdate();
+    invPs.close();
+
+    con.commit();
+    System.out.println("\nOrder re-run! Order#: " + newOrderNum + " | Total: $" + total);
+}
+static void monthlySummary() throws SQLException {
+
+    System.out.print("Enter month (MM): ");
+    String month = scanner.nextLine();
+
+    System.out.print("Enter year (YYYY): ");
+    String year = scanner.nextLine();
+
+    System.out.println("\n======================================");
+    System.out.println("MONTHLY SALES SUMMARY");
+    System.out.println("======================================");
+
+    System.out.println("\n--- Sales Per Product ---");
+
+    PreparedStatement productPs = con.prepareStatement(
+        "SELECT p.StockNumber, p.Category, " +
+        "SUM(oi.Quantity) AS TotalQty, " +
+        "SUM(oi.Quantity * p.Price) AS TotalSales " +
+        "FROM Products p, Order_Item oi, Customer_Orders co " +
+        "WHERE TRIM(p.StockNumber) = TRIM(oi.StockNumber) " +
+        "AND TRIM(oi.OrderNum) = TRIM(co.OrderNum) " +
+        "AND SUBSTR(co.OrderDate,1,7) = ? " +
+        "GROUP BY p.StockNumber, p.Category " +
+        "ORDER BY TotalSales DESC"
+    );
+
+    productPs.setString(1, year + "-" + month);
+
+    ResultSet productRs = productPs.executeQuery();
+
+    System.out.printf("%-12s %-15s %-12s %s%n",
+        "Stock#", "Category", "Quantity", "Sales");
+
+    System.out.println("------------------------------------------------");
+
+    while (productRs.next()) {
+        System.out.printf("%-12s %-15s %-12d %.2f%n",
+            productRs.getString("StockNumber").trim(),
+            productRs.getString("Category").trim(),
+            productRs.getInt("TotalQty"),
+            productRs.getDouble("TotalSales")
+        );
+    }
+
+    productRs.close();
+    productPs.close();
+
+    System.out.println("\n--- Sales Per Category ---");
+
+    PreparedStatement categoryPs = con.prepareStatement(
+        "SELECT p.Category, " +
+        "SUM(oi.Quantity) AS TotalQty, " +
+        "SUM(oi.Quantity * p.Price) AS TotalSales " +
+        "FROM Products p, Order_Item oi, Customer_Orders co " +
+        "WHERE TRIM(p.StockNumber) = TRIM(oi.StockNumber) " +
+        "AND TRIM(oi.OrderNum) = TRIM(co.OrderNum) " +
+        "AND SUBSTR(co.OrderDate,1,7) = ? " +
+        "GROUP BY p.Category " +
+        "ORDER BY TotalSales DESC"
+    );
+
+    categoryPs.setString(1, year + "-" + month);
+
+    ResultSet categoryRs = categoryPs.executeQuery();
+
+    System.out.printf("%-15s %-12s %s%n",
+        "Category", "Quantity", "Sales");
+
+    System.out.println("-------------------------------------------");
+
+    while (categoryRs.next()) {
+        System.out.printf("%-15s %-12d %.2f%n",
+            categoryRs.getString("Category").trim(),
+            categoryRs.getInt("TotalQty"),
+            categoryRs.getDouble("TotalSales")
+        );
+    }
+
+    categoryRs.close();
+    categoryPs.close();
+
+    System.out.println("\n--- Top Customer ---");
+
+    PreparedStatement topCustomerPs = con.prepareStatement(
+        "SELECT * FROM (" +
+        "SELECT c.Identifier, c.Name, " +
+        "SUM(co.Total) AS TotalSpent " +
+        "FROM Customer c, Customer_Orders co " +
+        "WHERE TRIM(c.Identifier) = TRIM(co.Identifier) " +
+        "AND SUBSTR(co.OrderDate,1,7) = ? " +
+        "GROUP BY c.Identifier, c.Name " +
+        "ORDER BY TotalSpent DESC" +
+        ") WHERE ROWNUM = 1"
+    );
+
+    topCustomerPs.setString(1, year + "-" + month);
+
+    ResultSet topRs = topCustomerPs.executeQuery();
+
+    if (topRs.next()) {
+        System.out.println("Customer ID: " +
+            topRs.getString("Identifier").trim());
+
+        System.out.println("Customer Name: " +
+            topRs.getString("Name").trim());
+
+        System.out.printf("Total Purchases: %.2f%n",
+            topRs.getDouble("TotalSpent"));
+    } else {
+        System.out.println("No sales found for this month.");
+    }
+
+    topRs.close();
+    topCustomerPs.close();
 }
 static void adjustCustomerStatus() throws SQLException {
     System.out.print("Enter Customer ID: "); 
@@ -731,13 +937,128 @@ static void adjustCustomerStatus() throws SQLException {
     System.out.println("Customer " + customerId + " status updated to: " + newStatus);
     ps.close();
 }
-static void sendOrderToManufacturer() throws SQLException { 
 
+//need to send the order
+static void sendOrderToManufacturer() throws SQLException {
+    System.out.print("Enter Manufacturer name: "); 
+    String mfr = scanner.nextLine();
+    System.out.print("Enter Stock Number: ");      
+    String stockNum  = scanner.nextLine();
+    System.out.print("Enter Quantity to order: ");  
+    int quantity = Integer.parseInt(scanner.nextLine());
+
+    PreparedStatement prodCheck = con.prepareStatement(
+        "SELECT StockNumber, Manufacturer, ModelNumber, Price FROM Products WHERE TRIM(Manufacturer) = TRIM(?) AND TRIM(StockNumber) = TRIM(?)"
+    );
+    prodCheck.setString(1, mfr);
+    prodCheck.setString(2, stockNum);
+    ResultSet rs = prodCheck.executeQuery();
+
+    if (!rs.next()) {
+        System.out.println("Product not found for that manufacturer!");
+        rs.close(); 
+        prodCheck.close(); 
+        return;
+    }
+    String replenishmentId = "REP-" + System.currentTimeMillis();
+    PreparedStatement insertRep = con.prepareStatement(
+    "INSERT INTO ReplenishmentOrder " +
+    "(replenishment_order_id, stock_number, quantity_ordered, replenishment_order_date, status) " +
+    "VALUES (?, ?, ?, ?, ?)"
+);
+
+    insertRep.setString(1, replenishmentId);
+    insertRep.setString(2, stockNum);
+    insertRep.setInt(3, quantity);
+    insertRep.setDate(4, java.sql.Date.valueOf(java.time.LocalDate.now()));
+    insertRep.setString(5, "ordered");
+    insertRep.executeUpdate();
+    insertRep.close();
+    PreparedStatement updateRep = con.prepareStatement(
+    "UPDATE InventoryProduct " +
+    "SET replenishment = replenishment + ? " +
+    "WHERE TRIM(stock_number)=TRIM(?)"
+);
+
+    updateRep.setInt(1, quantity);
+    updateRep.setString(2, stockNum);
+    updateRep.executeUpdate();
+    updateRep.close();
+    System.out.println("\n--- Order to Manufacturer ---");
+    System.out.println("Manufacturer: " + rs.getString("Manufacturer").trim());
+    System.out.println("Stock#:       " + rs.getString("StockNumber").trim());
+    System.out.println("Model:        " + rs.getString("ModelNumber").trim());
+    System.out.println("Quantity:     " + quantity);
+    System.out.println("Order Date:   " + java.time.LocalDate.now().toString());
+    System.out.println("--- Order sent to manufacturer! ---");
+    rs.close(); 
+    prodCheck.close();
 }
 static void changePrice() throws SQLException {
+    System.out.print("Enter Stock Number: "); 
+    String stockNum = scanner.nextLine();
+    System.out.print("Enter new price: ");    
+    double newPrice = Double.parseDouble(scanner.nextLine());
+    while (newPrice < 0) {
+        System.out.println("Price cannot be negative! Enter a new price");
+        newPrice = Double.parseDouble(scanner.nextLine());
+    }
+    PreparedStatement check = con.prepareStatement(
+        "SELECT StockNumber FROM Products WHERE TRIM(StockNumber) = TRIM(?)"
+    );
+    check.setString(1, stockNum);
+    ResultSet rs = check.executeQuery();
+    if (!rs.next()) {
+        System.out.println("Product not found!");
+        rs.close(); 
+        check.close(); 
+        return;
+    }
+    rs.close(); 
+    check.close();
 
- }
-static void deleteTransactions() throws SQLException { 
+    PreparedStatement ps = con.prepareStatement(
+        "UPDATE Products SET Price = ? WHERE TRIM(StockNumber) = TRIM(?)"
+    );
+    ps.setDouble(1, newPrice);
+    ps.setString(2, stockNum);
+    ps.executeUpdate();
+    con.commit();
+    System.out.printf("Price updated to $%.2f for stock %s%n", newPrice, stockNum);
+    ps.close();
+}
+static void deleteTransactions() throws SQLException {
+    System.out.print("Enter Order Number to delete: "); 
+    String orderNum = scanner.nextLine();
+    PreparedStatement check = con.prepareStatement(
+        "SELECT OrderNum FROM Customer_Orders WHERE TRIM(OrderNum) = TRIM(?)"
+    );
+    check.setString(1, orderNum);
+    ResultSet rs = check.executeQuery();
+    if (!rs.next()) {
+        System.out.println("Order not found!");
+        rs.close(); 
+        check.close(); 
+        return;
+    }
+    rs.close(); 
+    check.close();
 
+    PreparedStatement ps1 = con.prepareStatement(
+        "DELETE FROM Order_Item WHERE TRIM(OrderNum) = TRIM(?)"
+    );
+    ps1.setString(1, orderNum);
+    ps1.executeUpdate();
+    ps1.close();
+
+    PreparedStatement ps2 = con.prepareStatement(
+        "DELETE FROM Customer_Orders WHERE TRIM(OrderNum) = TRIM(?)"
+    );
+    ps2.setString(1, orderNum);
+    ps2.executeUpdate();
+    ps2.close();
+
+    con.commit();
+    System.out.println("Order " + orderNum + " deleted!");
 }
 }
