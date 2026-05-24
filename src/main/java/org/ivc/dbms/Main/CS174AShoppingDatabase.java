@@ -670,8 +670,66 @@ static void rerunOrder(String customerId) throws SQLException {
 static void monthlySummary() throws SQLException { 
 
 }
-static void adjustCustomerStatus() throws SQLException { 
+static void adjustCustomerStatus() throws SQLException {
+    System.out.print("Enter Customer ID: "); 
+    String customerId = scanner.nextLine();
 
+    PreparedStatement check = con.prepareStatement(
+        "SELECT Identifier FROM Customer WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    check.setString(1, customerId);
+    ResultSet rs = check.executeQuery();
+    if (!rs.next()) {
+        System.out.println("Customer not found!");
+        rs.close(); 
+        check.close(); 
+        return;
+    }
+    rs.close(); 
+    check.close();
+
+    System.out.println("1. Auto-calculate from sales");
+    System.out.println("2. Set manually");
+    System.out.print("Choose: ");
+    int choice = Integer.parseInt(scanner.nextLine());
+
+    String newStatus;
+    if (choice == 1) {
+        PreparedStatement statusUpdate = con.prepareStatement(
+            "SELECT SUM(Total) FROM (" +
+            "SELECT Total FROM Customer_Orders " +
+            "WHERE TRIM(Identifier) = TRIM(?) " +
+            "ORDER BY OrderDate DESC FETCH FIRST 3 ROWS ONLY)"
+        );
+        statusUpdate.setString(1, customerId);
+        ResultSet statusRs = statusUpdate.executeQuery();
+        statusRs.next();
+        double last3Total = statusRs.getDouble(1);
+        statusRs.close(); statusUpdate.close();
+
+        if (last3Total > 500)      newStatus = "gold";
+        else if (last3Total > 100) newStatus = "silver";
+        else if (last3Total > 0)   newStatus = "green";
+        else                       newStatus = "new";
+    } else {
+        System.out.print("Enter new status (gold/silver/green/new): ");
+        newStatus = scanner.nextLine();
+        if (!newStatus.equalsIgnoreCase("gold") && !newStatus.equalsIgnoreCase("silver") &&
+            !newStatus.equalsIgnoreCase("green") && !newStatus.equalsIgnoreCase("new")) {
+            System.out.println("Invalid status!");
+            return;
+        }
+    }
+
+    PreparedStatement ps = con.prepareStatement(
+        "UPDATE Customer SET Status = ? WHERE TRIM(Identifier) = TRIM(?)"
+    );
+    ps.setString(1, newStatus);
+    ps.setString(2, customerId);
+    ps.executeUpdate();
+    con.commit();
+    System.out.println("Customer " + customerId + " status updated to: " + newStatus);
+    ps.close();
 }
 static void sendOrderToManufacturer() throws SQLException { 
 
