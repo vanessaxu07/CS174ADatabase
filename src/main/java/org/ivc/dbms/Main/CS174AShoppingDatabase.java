@@ -47,10 +47,8 @@ public class CS174AShoppingDatabase {
                 System.out.println("1. Customer Login");
                 System.out.println("2. Manager Login");
                 System.out.println("3. Exit");
-                System.out.print("Choose: ");
 
-                int choice = scanner.nextInt();
-                scanner.nextLine();
+                int choice = readIntSafe("Choose: ");
 
                 if (choice == 1) customerLogin();
                 else if (choice == 2) managerLogin();
@@ -73,8 +71,12 @@ public class CS174AShoppingDatabase {
     }
 
     static void customerLogin() throws SQLException {
+
+    while (true) {
+
         System.out.print("Enter Customer ID: ");
         String id = scanner.nextLine();
+
         System.out.print("Enter Password: ");
         String pass = scanner.nextLine();
 
@@ -89,27 +91,88 @@ public class CS174AShoppingDatabase {
 
         ResultSet rs = checkPs.executeQuery();
 
+        // =========================
+        // EXISTING CUSTOMER LOGIN
+        // =========================
         if (rs.next()) {
+
             String status = rs.getString("Status");
+
+            rs.close();
+            checkPs.close();
+
             System.out.println("Welcome back!");
             System.out.println("Customer status: " + status);
 
-        } else {
-            System.out.println("New customer detected. Please enter your information.");
+            runCustomerMenu(id);
+            return;
+        }
 
-            System.out.print("Enter Name: ");
-            String name = scanner.nextLine();
+        rs.close();
+        checkPs.close();
 
-            System.out.print("Enter Email: ");
-            String email = scanner.nextLine();
+        // =========================
+        // NEW CUSTOMER FLOW
+        // =========================
+        System.out.println("Customer not found or incorrect password.");
+        System.out.println("1. Try again");
+        System.out.println("2. Create new account");
+        System.out.print("Choose: ");
 
-            System.out.print("Enter Address: ");
-            String address = scanner.nextLine();
+        int choice;
+        try {
+            choice = Integer.parseInt(scanner.nextLine().trim());
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input. Try again.\n");
+            continue;
+        }
 
-            String status = "new";
+        if (choice == 1) {
+            continue; // reprompt login
+        }
+
+        if (choice != 2) {
+            System.out.println("Invalid choice.\n");
+            continue;
+        }
+
+        // =========================
+        // CREATE NEW CUSTOMER
+        // =========================
+        System.out.println("New customer detected. Please enter your information.");
+
+        System.out.print("Enter Name: ");
+        String name = scanner.nextLine();
+
+        System.out.print("Enter Email: ");
+        String email = scanner.nextLine();
+
+        System.out.print("Enter Address: ");
+        String address = scanner.nextLine();
+
+        String status = "new";
+
+        try {
+            // pre-check to avoid ORA-00001
+            PreparedStatement preCheck = con.prepareStatement(
+                    "SELECT 1 FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+            );
+            preCheck.setString(1, id);
+            ResultSet exists = preCheck.executeQuery();
+
+            if (exists.next()) {
+                System.out.println("Customer ID already exists. Please log in instead.\n");
+                exists.close();
+                preCheck.close();
+                continue;
+            }
+
+            exists.close();
+            preCheck.close();
 
             PreparedStatement insertPs = con.prepareStatement(
-                    "INSERT INTO Customer (Identifier, Password, Name, Email, Address, Status) VALUES (?, ?, ?, ?, ?, ?)"
+                    "INSERT INTO Customer (Identifier, Password, Name, Email, Address, Status) " +
+                            "VALUES (?, ?, ?, ?, ?, ?)"
             );
 
             insertPs.setString(1, id);
@@ -121,8 +184,6 @@ public class CS174AShoppingDatabase {
 
             insertPs.executeUpdate();
             insertPs.close();
-
-            System.out.println("New customer account created!");
 
             String cartId = "CART-" + System.currentTimeMillis();
 
@@ -138,13 +199,25 @@ public class CS174AShoppingDatabase {
             cartInsert.close();
 
             con.commit();
-            System.out.println("Cart created for customer: " + cartId);
-        }
 
-        rs.close();
-        checkPs.close();
-        runCustomerMenu(id);
+            System.out.println("New customer account created!");
+            System.out.println("Cart created for customer: " + cartId);
+
+            runCustomerMenu(id);
+            return;
+
+        } catch (SQLException e) {
+
+            con.rollback();
+
+            if (e.getErrorCode() == 1) {
+                System.out.println("Customer ID already exists (constraint). Try again.\n");
+            } else {
+                System.out.println("Database error: " + e.getMessage());
+            }
+        }
     }
+}
 
     static void managerLogin() throws SQLException {
         System.out.print("Enter Manager ID: ");
@@ -194,10 +267,8 @@ public class CS174AShoppingDatabase {
             System.out.println("9. View order by order number");
             System.out.println("10. Re-run previous order");
             System.out.println("11. Logout");
-            System.out.print("Choose: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+            int choice = readIntSafe("Choose: ");
 
             if (choice == 1) viewProducts();
             else if (choice == 2) searchProduct();
@@ -224,10 +295,8 @@ public class CS174AShoppingDatabase {
             System.out.println("4. Change price of item");
             System.out.println("5. Delete old sales transactions");
             System.out.println("6. Logout");
-            System.out.print("Choose: ");
 
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+            int choice = readIntSafe("Choose: ");
 
             if (choice == 1) monthlySummary();
             else if (choice == 2) adjustCustomerStatus();
@@ -264,9 +333,8 @@ public class CS174AShoppingDatabase {
     System.out.println("4. By category");
     System.out.println("5. By description attribute");
     System.out.println("6. By compatible item");
-    System.out.print("Choose: ");
 
-    int choice = Integer.parseInt(scanner.nextLine());
+    int choice = readIntSafe("Choose: ");
     PreparedStatement ps = null;
 
     if (choice == 1) {
@@ -378,8 +446,7 @@ static void addToCart(String customerId) throws SQLException {
     System.out.print("Enter Stock Number: ");
     String stockNum = scanner.nextLine();
 
-    System.out.print("Enter Quantity: ");
-    int quantity = Integer.parseInt(scanner.nextLine());
+    int quantity = readIntSafe("Enter Quantity: ");
 
     PreparedStatement customerCheck = con.prepareStatement(
         "SELECT Identifier FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
@@ -1130,9 +1197,8 @@ static void adjustCustomerStatus() throws SQLException {
 
     System.out.println("1. Auto-calculate from sales");
     System.out.println("2. Set manually");
-    System.out.print("Choose: ");
 
-    int choice = Integer.parseInt(scanner.nextLine());
+    int choice = readIntSafe("Choose: ");
 
     String newStatus;
 
@@ -1195,8 +1261,7 @@ static void sendOrderToManufacturer() throws SQLException {
     System.out.print("Enter Stock Number: ");
     String stockNum = scanner.nextLine();
 
-    System.out.print("Enter Quantity to order: ");
-    int quantity = Integer.parseInt(scanner.nextLine());
+    int quantity = readIntSafe("Enter Quantity to order: ");
 
     PreparedStatement prodCheck = con.prepareStatement(
         "SELECT StockNumber, Manufacturer, ModelNumber, Price " +
@@ -1262,12 +1327,10 @@ static void changePrice() throws SQLException {
     System.out.print("Enter Stock Number: ");
     String stockNum = scanner.nextLine();
 
-    System.out.print("Enter new price: ");
-    double newPrice = Double.parseDouble(scanner.nextLine());
+    double newPrice = readDoubleSafe("Enter new price: ");
 
     while (newPrice < 0) {
-        System.out.println("Price cannot be negative! Enter a new price");
-        newPrice = Double.parseDouble(scanner.nextLine());
+        newPrice = readDoubleSafe("Price cannot be negative! Enter a new price: ");
     }
 
     PreparedStatement check = con.prepareStatement(
@@ -1337,5 +1400,28 @@ static void deleteTransactions() throws SQLException {
 
     con.commit();
     System.out.println("Order " + orderNum + " deleted!");
+}
+static int readIntSafe(String prompt) {
+    while (true) {
+        System.out.print(prompt);
+        String input = scanner.nextLine().trim();
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number. Please enter digits only.");
+        }
+    }
+}
+
+static double readDoubleSafe(String prompt) {
+    while (true) {
+        System.out.print(prompt);
+        String input = scanner.nextLine().trim();
+        try {
+            return Double.parseDouble(input);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number. Please enter a valid decimal value.");
+        }
+    }
 }
 }
