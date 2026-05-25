@@ -81,7 +81,7 @@ public class CS174AShoppingDatabase {
         PreparedStatement checkPs = con.prepareStatement(
                 "SELECT Status FROM Customer " +
                         "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
-                        "AND LOWER(TRIM(Password)) = LOWER(TRIM(?))"
+                        "AND TRIM(Password) = TRIM(?)"
         );
 
         checkPs.setString(1, id);
@@ -156,7 +156,7 @@ public class CS174AShoppingDatabase {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT Identifier FROM Managers " +
                         "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
-                        "AND LOWER(TRIM(Password)) = LOWER(TRIM(?))"
+                        "AND TRIM(Password) = TRIM(?)"
         );
 
         ps.setString(1, id);
