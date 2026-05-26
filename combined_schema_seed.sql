@@ -319,3 +319,183 @@ INSERT INTO DiscountRules VALUES ('gold',   0.10, 0.10, 100.00);
 INSERT INTO DiscountRules VALUES ('silver', 0.05, 0.10, 100.00);
 INSERT INTO DiscountRules VALUES ('green',  0.00, 0.10, 100.00);
 INSERT INTO DiscountRules VALUES ('new',    0.10, 0.00, 0.00);
+
+
+--- ====================================================================
+--- 2. SEED CORE PRODUCT CATALOG (eMART Database)
+--- ====================================================================
+INSERT INTO Products VALUES ('AA00101', 'Laptop',   'HP',        'A6111', 12, 1630.00);
+INSERT INTO Products VALUES ('AA00201', 'Desktop',  'Dell',      'B420',  12, 239.00);
+INSERT INTO Products VALUES ('AA00202', 'Desktop',  'eMachines', 'C3958', 12, 369.99);
+INSERT INTO Products VALUES ('AA00301', 'Monitor',  'Envision',  'D720',  36, 69.99);
+INSERT INTO Products VALUES ('AA00302', 'Monitor',  'Samsung',   'E712',  36, 279.99);
+INSERT INTO Products VALUES ('AA00401', 'Software', 'Symantec',  'F2005', 60, 19.99);
+INSERT INTO Products VALUES ('AA00402', 'Software', 'McAfee',    'G2005', 60, 19.99);
+INSERT INTO Products VALUES ('AA00403', 'Software', 'Oracle',    'H26',   12, 29.99);
+INSERT INTO Products VALUES ('AA00501', 'Printer',  'HP',        'J1320', 12, 299.99);
+INSERT INTO Products VALUES ('AA00601', 'Camera',   'HP',        'K435',  3,  119.99);
+INSERT INTO Products VALUES ('AA00602', 'Camera',   'Canon',     'L738',  1,  329.99);
+
+--- ====================================================================
+--- 3. SEED PRODUCT COMPATIBILITY LISTS (Link Table Model)
+--- ====================================================================
+-- Monitors are compatible with desktops
+INSERT INTO Product_Compatibility VALUES ('AA00301', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00301', 'AA00202');
+INSERT INTO Product_Compatibility VALUES ('AA00302', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00302', 'AA00202');
+
+-- Software packages are compatible with hardware systems
+INSERT INTO Product_Compatibility VALUES ('AA00401', 'AA00101');
+INSERT INTO Product_Compatibility VALUES ('AA00401', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00401', 'AA00202');
+INSERT INTO Product_Compatibility VALUES ('AA00402', 'AA00101');
+INSERT INTO Product_Compatibility VALUES ('AA00402', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00402', 'AA00202');
+INSERT INTO Product_Compatibility VALUES ('AA00403', 'AA00101');
+INSERT INTO Product_Compatibility VALUES ('AA00403', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00403', 'AA00202');
+
+-- Printers and cameras are compatible with desktops
+INSERT INTO Product_Compatibility VALUES ('AA00501', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00501', 'AA00202');
+INSERT INTO Product_Compatibility VALUES ('AA00601', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00601', 'AA00202');
+INSERT INTO Product_Compatibility VALUES ('AA00602', 'AA00201');
+INSERT INTO Product_Compatibility VALUES ('AA00602', 'AA00202');
+
+--- ====================================================================
+--- 4. SEED DETAILED KEY-VALUE ATTRIBUTES (Product_Description)
+--- ====================================================================
+INSERT INTO Product_Description VALUES ('AA00101', 'Processor speed', '3.33Ghz');
+INSERT INTO Product_Description VALUES ('AA00101', 'Ram size', '512 MB');
+INSERT INTO Product_Description VALUES ('AA00101', 'Hard disk size', '100Gb');
+INSERT INTO Product_Description VALUES ('AA00101', 'Display Size', '17\"');
+
+INSERT INTO Product_Description VALUES ('AA00201', 'Processor speed', '2.53Ghz');
+INSERT INTO Product_Description VALUES ('AA00201', 'Ram size', '256 Mb');
+INSERT INTO Product_Description VALUES ('AA00201', 'Hard disk size', '80Gb');
+INSERT INTO Product_Description VALUES ('AA00201', 'OS', 'none');
+
+INSERT INTO Product_Description VALUES ('AA00202', 'Processor speed', '2.9Ghz');
+INSERT INTO Product_Description VALUES ('AA00202', 'Ram size', '512 Mb');
+INSERT INTO Product_Description VALUES ('AA00202', 'Hard disk size', '80Gb');
+
+INSERT INTO Product_Description VALUES ('AA00301', 'Size', '17\"');
+INSERT INTO Product_Description VALUES ('AA00301', 'Weight', '25 lb.');
+
+INSERT INTO Product_Description VALUES ('AA00302', 'Size', '17\"');
+INSERT INTO Product_Description VALUES ('AA00302', 'Weight', '9.6 lb.');
+
+INSERT INTO Product_Description VALUES ('AA00401', 'Required disk size', '128 MB');
+INSERT INTO Product_Description VALUES ('AA00401', 'Required RAM size', '64 MB');
+
+INSERT INTO Product_Description VALUES ('AA00402', 'Required disk size', '128 MB');
+INSERT INTO Product_Description VALUES ('AA00402', 'Required RAM size', '64 MB');
+
+INSERT INTO Product_Description VALUES ('AA00403', 'Required disk size', '1 GB');
+INSERT INTO Product_Description VALUES ('AA00403', 'Required RAM size', '128 MB');
+
+INSERT INTO Product_Description VALUES ('AA00501', 'Resolution', '1200 dpi');
+INSERT INTO Product_Description VALUES ('AA00501', 'Sheet capacity', '500');
+INSERT INTO Product_Description VALUES ('AA00501', 'Weight', '.4 lb');
+
+INSERT INTO Product_Description VALUES ('AA00601', 'Resolution', '3.1 Mp');
+INSERT INTO Product_Description VALUES ('AA00601', 'Max zoom', '5 times');
+INSERT INTO Product_Description VALUES ('AA00601', 'Weight', '24.7 lb');
+
+INSERT INTO Product_Description VALUES ('AA00602', 'Resolution', '3.1 Mp');
+INSERT INTO Product_Description VALUES ('AA00602', 'Max zoom', '5 times');
+INSERT INTO Product_Description VALUES ('AA00602', 'Weight', '24.7 lb');
+
+--- ====================================================================
+--- 5. SEED ACCOUNT PROFILES (Customers & Managers Data)
+--- ====================================================================
+-- Standard customer accounts
+INSERT INTO Customer VALUES ('C001', 'pass1', 'Alice Smith', 'alice@gmail.com', '123 Main St', 'gold');
+INSERT INTO Customer VALUES ('C002', 'pass2', 'Bob Jones', 'bob@gmail.com', '456 Oak Ave', 'silver');
+INSERT INTO Customer VALUES ('C003', 'pass3', 'Carol White', 'carol@gmail.com', '789 Pine Rd', 'new');
+INSERT INTO Customer VALUES ('C004', 'pass4', 'David Brown', 'david@gmail.com', '321 Elm St', 'green');
+
+-- Spreadsheet sample accounts
+INSERT INTO Customer VALUES ('Lkim', 'Lkim', 'Linda Kim', 'lkim@cs', '45 Oak Ave, Santa Barbara, CA 93101', 'Gold');
+INSERT INTO Customer VALUES ('Djones', 'Djones', 'Derek Jones', 'djones@cs', '88 Pine St, Goleta, CA 93117', 'Silver');
+INSERT INTO Customer VALUES ('Mramirez', 'Mramirez', 'Maria Ramirez', 'mramirez@cs', '12 Maple Rd, Carpinteria, CA 93013', 'New');
+INSERT INTO Customer VALUES ('Tpatel', 'Tpatel', 'Tariq Patel', 'tpatel@ce', '305 Elm Blvd, Ventura, CA 93001', 'New');
+INSERT INTO Customer VALUES ('Bford', 'Bford', 'Blake Ford', 'bford@ce', '200 Spruce Ct, Oxnard, CA 93030', 'Green');
+INSERT INTO Customer VALUES ('Pchen', 'Pchen', 'Peter Chen', 'pchen@db', '456 Database Wy, Datum, CA 93117', 'Silver');
+INSERT INTO Customer VALUES ('Jgray', 'Jgray', 'Jim Gray', 'jgray@db', '789 Database Rd, Datas, CA 93118', 'Green');
+INSERT INTO Customer VALUES ('Dknuth', 'Dknuth', 'Donald Knuth', 'dknuth@cs', '101 Compsci Ln, Comp, CA 94305', 'Gold');
+INSERT INTO Customer VALUES ('Swong', 'Swong', 'Sarah Wong', 'swong@ce', '77 Cedar Lane, Ojai, CA 93023', 'Green');
+INSERT INTO Customer VALUES ('Tcodd', 'Tcodd', 'Ted Codd', 'tcodd@db', '123 Database St, Data, CA 93116', 'Gold');
+
+-- Administration Authority Maps
+INSERT INTO Managers VALUES ('M001', 'admin1');
+INSERT INTO Managers VALUES ('M002', 'admin2');
+INSERT INTO Managers VALUES ('Swong', 'Swong');
+INSERT INTO Managers VALUES ('Tcodd', 'Tcodd');
+
+--- ====================================================================
+--- 6. SEED SIMULATED BASKETS (Active Carts)
+--- ====================================================================
+INSERT INTO Shopping_Cart VALUES ('CART001', TO_DATE('2026-05-01', 'YYYY-MM-DD'), 'C001');
+INSERT INTO Shopping_Cart VALUES ('CART002', TO_DATE('2026-05-02', 'YYYY-MM-DD'), 'C002');
+INSERT INTO Shopping_Cart VALUES ('CART003', TO_DATE('2026-05-03', 'YYYY-MM-DD'), 'C003');
+
+INSERT INTO Cart_Items VALUES ('AA00101', 'CART001', 1);
+INSERT INTO Cart_Items VALUES ('AA00201', 'CART001', 2);
+INSERT INTO Cart_Items VALUES ('AA00301', 'CART002', 1);
+INSERT INTO Cart_Items VALUES ('AA00401', 'CART003', 3);
+
+--- ====================================================================
+--- 7. SEED EXACT PHYSICAL INVENTORY LOGISTICS (eDEPOT Database)
+--- ====================================================================
+
+
+DELETE FROM ReplenishmentOrder;
+DELETE FROM WarehouseOrder;
+DELETE FROM Shipment;
+DELETE FROM ShippingNotice;
+DELETE FROM InventoryProduct;
+COMMIT;
+-- Clean out any failed entries first
+DELETE FROM InventoryProduct;
+COMMIT;
+
+--- ====================================================================
+--- SEED INVENTORYPRODUCT (eDEPOT Database) - FULL 8 COLUMNS
+--- ====================================================================
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00101', 'HP', 'A6111', 2, 1, 2, 'A9', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00201', 'Dell', 'B420', 3, 2, 5, 'A7', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00202', 'eMachines', 'C3958', 4, 2, 5, 'B52', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00301', 'Envision', 'D720', 4, 3, 6, 'C27', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00302', 'Samsung', 'E712', 5, 3, 6, 'C13', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00401', 'Symantec', 'F2005', 7, 5, 9, 'D27', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00402', 'McAfee', 'G2005', 7, 5, 9, 'D15', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00403', 'Oracle', 'H26', 7, 5, 9, 'D3', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00501', 'HP', 'J1320', 3, 2, 4, 'E7', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00601', 'HP', 'K435', 3, 2, 5, 'F9', 0);
+
+INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, quantity, min_stock_level, max_stock_level, location, replenishment) 
+VALUES ('AA00602', 'Canon', 'L738', 3, 2, 5, 'F3', 0);
+
+COMMIT;

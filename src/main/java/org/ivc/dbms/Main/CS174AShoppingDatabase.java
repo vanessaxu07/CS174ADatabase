@@ -442,7 +442,6 @@ public class CS174AShoppingDatabase {
     rs.close();
     ps.close();
 }
-
 static void addToCart(String customerId) throws SQLException {
     PreparedStatement getCart = con.prepareStatement(
         "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
@@ -452,6 +451,8 @@ static void addToCart(String customerId) throws SQLException {
 
     if (!rs1.next()) {
         System.out.println("No cart found for customer!");
+        rs1.close();
+        getCart.close();
         return;
     }
 
@@ -463,6 +464,10 @@ static void addToCart(String customerId) throws SQLException {
     if (stockNum == null) return;
 
     int quantity = readIntSafe("Enter Quantity: ");
+    if (quantity <= 0) {
+        System.out.println("Quantity must be greater than 0.");
+        return;
+    }
 
     PreparedStatement customerCheck = con.prepareStatement(
         "SELECT Identifier FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
@@ -494,6 +499,20 @@ static void addToCart(String customerId) throws SQLException {
     productRs.close();
     productCheck.close();
 
+    int inventoryQty = getInventoryQuantity(stockNum);
+    if (inventoryQty < 0) {
+        System.out.println("Product exists in catalog, but it is not available in inventory.");
+        return;
+    }
+
+    int currentCartQty = getCartQuantityForStock(cartId, stockNum);
+    if (currentCartQty + quantity > inventoryQty) {
+        System.out.println("Not enough inventory for product " + stockNum + ".");
+        System.out.println("Available: " + inventoryQty + ", already in cart: " + currentCartQty +
+                ", requested: " + quantity);
+        return;
+    }
+
     PreparedStatement check = con.prepareStatement(
         "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
     );
@@ -510,19 +529,29 @@ static void addToCart(String customerId) throws SQLException {
     rs.close();
     check.close();
 
-    PreparedStatement ps2 = con.prepareStatement(
-        "INSERT INTO Cart_Items (StockNumber, CartId, Quantity) VALUES (?, ?, ?)"
+    PreparedStatement updateItem = con.prepareStatement(
+        "UPDATE Cart_Items SET Quantity = Quantity + ? " +
+        "WHERE TRIM(StockNumber) = TRIM(?) AND LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
     );
+    updateItem.setInt(1, quantity);
+    updateItem.setString(2, stockNum);
+    updateItem.setString(3, cartId);
+    int rows = updateItem.executeUpdate();
+    updateItem.close();
 
-    ps2.setString(1, stockNum);
-    ps2.setString(2, cartId);
-    ps2.setInt(3, quantity);
-
-    ps2.executeUpdate();
+    if (rows == 0) {
+        PreparedStatement insertItem = con.prepareStatement(
+            "INSERT INTO Cart_Items (StockNumber, CartId, Quantity) VALUES (?, ?, ?)"
+        );
+        insertItem.setString(1, stockNum);
+        insertItem.setString(2, cartId);
+        insertItem.setInt(3, quantity);
+        insertItem.executeUpdate();
+        insertItem.close();
+    }
 
     con.commit();
     System.out.println("Item added to cart!");
-    ps2.close();
 }
 
    static void viewCart(String customerId) throws SQLException {
@@ -637,8 +666,12 @@ static void removeFromCart(String customerId) throws SQLException {
 
     placeOrder(customerId, cartId, shippingMethod);
 }
-
 static void placeOrder(String customerId, String cartId, String shippingMethod) throws SQLException {
+
+    if (!cartHasEnoughInventory(cartId)) {
+        System.out.println("Order cannot be placed because inventory is not enough.");
+        return;
+    }
 
     String orderNum = "ORD-" + System.currentTimeMillis();
 
@@ -752,6 +785,9 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
 
     rs.close();
     ps.close();
+
+    deductInventoryForCart(cartId);
+    insertWarehouseOrderFromCart(orderNum, cartId);
 
     PreparedStatement clear = con.prepareStatement(
         "DELETE FROM Cart_Items WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
@@ -1074,6 +1110,7 @@ static void rerunOrder(String customerId) throws SQLException {
         invUp.close();
     }
 
+    insertWarehouseOrderFromOrderItems(newOrderNum);
     updateCustomerStatus(customerId);
     con.commit();
 
@@ -1113,6 +1150,120 @@ static void updateCustomerStatus(String customerId) throws SQLException {
     updatePs.executeUpdate();
     updatePs.close();
 }
+
+
+static int getInventoryQuantity(String stockNum) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "SELECT quantity FROM InventoryProduct WHERE TRIM(stock_number) = TRIM(?)"
+    );
+    ps.setString(1, stockNum);
+    ResultSet rs = ps.executeQuery();
+
+    int quantity = -1;
+    if (rs.next()) {
+        quantity = rs.getInt("quantity");
+    }
+
+    rs.close();
+    ps.close();
+    return quantity;
+}
+
+static int getCartQuantityForStock(String cartId, String stockNum) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "SELECT NVL(SUM(Quantity), 0) FROM Cart_Items " +
+        "WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "AND TRIM(StockNumber) = TRIM(?)"
+    );
+    ps.setString(1, cartId);
+    ps.setString(2, stockNum);
+    ResultSet rs = ps.executeQuery();
+
+    int quantity = 0;
+    if (rs.next()) {
+        quantity = rs.getInt(1);
+    }
+
+    rs.close();
+    ps.close();
+    return quantity;
+}
+
+static boolean cartHasEnoughInventory(String cartId) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "SELECT q.StockNumber, q.CartQty, NVL(ip.quantity, 0) AS InventoryQty " +
+        "FROM (" +
+        "    SELECT TRIM(StockNumber) AS StockNumber, SUM(Quantity) AS CartQty " +
+        "    FROM Cart_Items " +
+        "    WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "    GROUP BY TRIM(StockNumber)" +
+        ") q LEFT JOIN InventoryProduct ip " +
+        "ON TRIM(ip.stock_number) = q.StockNumber " +
+        "WHERE ip.stock_number IS NULL OR ip.quantity < q.CartQty"
+    );
+    ps.setString(1, cartId);
+    ResultSet rs = ps.executeQuery();
+
+    boolean enough = true;
+    while (rs.next()) {
+        enough = false;
+        System.out.println("Not enough inventory for product " + rs.getString("StockNumber").trim() +
+                ". Requested: " + rs.getInt("CartQty") +
+                ", available: " + rs.getInt("InventoryQty"));
+    }
+
+    rs.close();
+    ps.close();
+    return enough;
+}
+
+static void deductInventoryForCart(String cartId) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "UPDATE InventoryProduct ip " +
+        "SET quantity = quantity - (" +
+        "    SELECT SUM(ci.Quantity) FROM Cart_Items ci " +
+        "    WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "    AND TRIM(ci.StockNumber) = TRIM(ip.stock_number)" +
+        ") " +
+        "WHERE EXISTS (" +
+        "    SELECT 1 FROM Cart_Items ci " +
+        "    WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "    AND TRIM(ci.StockNumber) = TRIM(ip.stock_number)" +
+        ")"
+    );
+    ps.setString(1, cartId);
+    ps.setString(2, cartId);
+    ps.executeUpdate();
+    ps.close();
+}
+
+static void insertWarehouseOrderFromCart(String orderNum, String cartId) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "INSERT INTO WarehouseOrder (order_number, stock_number, quantity_ordered, order_date, status) " +
+        "SELECT ?, TRIM(StockNumber), SUM(Quantity), SYSDATE, 'filled' " +
+        "FROM Cart_Items " +
+        "WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "GROUP BY TRIM(StockNumber)"
+    );
+    ps.setString(1, orderNum);
+    ps.setString(2, cartId);
+    ps.executeUpdate();
+    ps.close();
+}
+
+static void insertWarehouseOrderFromOrderItems(String orderNum) throws SQLException {
+    PreparedStatement ps = con.prepareStatement(
+        "INSERT INTO WarehouseOrder (order_number, stock_number, quantity_ordered, order_date, status) " +
+        "SELECT TRIM(OrderNum), TRIM(StockNumber), SUM(Quantity), SYSDATE, 'filled' " +
+        "FROM Order_Item " +
+        "WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?)) " +
+        "GROUP BY TRIM(OrderNum), TRIM(StockNumber)"
+    );
+    ps.setString(1, orderNum);
+    ps.executeUpdate();
+    ps.close();
+}
+
 
 static void monthlySummary() throws SQLException {
 
