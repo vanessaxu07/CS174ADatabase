@@ -10,7 +10,7 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
 <properties>
 <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 <maven.compiler.release>21</maven.compiler.release>
-<exec.mainClass>org.ivc.dbms.Main</exec.mainClass>
+<exec.mainClass>org.ivc.dbms.Main.CS174AShoppingDatabase</exec.mainClass>
 </properties>
 <dependencies>
 <dependency>
