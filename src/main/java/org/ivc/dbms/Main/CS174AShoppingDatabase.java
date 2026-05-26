@@ -1758,10 +1758,12 @@ static double readDoubleSafe(String prompt) {
         int minStock = 0;
         int maxStock = 0;
         String location = null;
+        int replenishmentToAdd = 0;
 
         if (stockNum == null) {
             newProduct = true;
             System.out.println("New product detected. Please assign inventory information.");
+
             stockNum = readStockNumber("Enter New Stock Number, for example AA00001: ");
             if (stockNum == null) return false;
 
@@ -1775,10 +1777,12 @@ static double readDoubleSafe(String prompt) {
             location = readText("Enter Warehouse Location, for example A1: ");
 
             if (minStock < 0 || maxStock < 0) return false;
+
             if (maxStock < minStock) {
                 System.out.println("Maximum stock level must be greater than or equal to minimum stock level.");
                 return false;
             }
+
             if (!validLocation(location)) return false;
             location = location.toUpperCase();
 
@@ -1786,9 +1790,17 @@ static double readDoubleSafe(String prompt) {
                 System.out.println("Quantity in notice would exceed the maximum stock level for this new product.");
                 return false;
             }
+
+            // New product has no existing replenishment yet.
+            replenishmentToAdd = quantity;
+
         } else {
             System.out.println("Existing product found. Stock Number: " + stockNum);
+
             if (!canAddReplenishment(stockNum, quantity)) return false;
+
+            // Only add the extra amount not already covered by current replenishment.
+            replenishmentToAdd = getReplenishmentToAddForNotice(stockNum, quantity);
         }
 
         if (shippingNoticeExists(noticeId, stockNum)) {
@@ -1800,8 +1812,10 @@ static double readDoubleSafe(String prompt) {
             try {
                 addQuantityToShippingNoticeItem(noticeId, stockNum, quantity);
                 con.commit();
+
                 System.out.println("This product was already in the notice. Added quantity to the existing notice item.");
                 return true;
+
             } catch (SQLException e) {
                 con.rollback();
                 System.out.println("Could not update existing notice item: " + e.getMessage());
@@ -1826,19 +1840,27 @@ static double readDoubleSafe(String prompt) {
             ps1.executeUpdate();
             ps1.close();
 
-            PreparedStatement ps2 = con.prepareStatement(
-                    "UPDATE InventoryProduct " +
-                    "SET replenishment = replenishment + ? " +
-                    "WHERE TRIM(stock_number) = TRIM(?)"
-            );
-            ps2.setInt(1, quantity);
-            ps2.setString(2, stockNum);
-            ps2.executeUpdate();
-            ps2.close();
+            if (replenishmentToAdd > 0) {
+                PreparedStatement ps2 = con.prepareStatement(
+                        "UPDATE InventoryProduct " +
+                        "SET replenishment = replenishment + ? " +
+                        "WHERE TRIM(stock_number) = TRIM(?)"
+                );
+                ps2.setInt(1, replenishmentToAdd);
+                ps2.setString(2, stockNum);
+                ps2.executeUpdate();
+                ps2.close();
+
+                System.out.println("Shipping notice item received. Replenishment increased by "
+                        + replenishmentToAdd + " for " + stockNum + ".");
+            } else {
+                System.out.println("Shipping notice item received. Existing replenishment already covers "
+                        + stockNum + ".");
+            }
 
             con.commit();
-            System.out.println("Shipping notice item received. Replenishment updated for " + stockNum + ".");
             return true;
+
         } catch (SQLException e) {
             con.rollback();
             System.out.println("Shipping notice failed: " + e.getMessage());
@@ -2164,12 +2186,59 @@ static double readDoubleSafe(String prompt) {
         rs.close();
         ps.close();
 
-        if (quantity + replenishment + quantityToAdd > maxStock) {
+        int openNoticeQuantity = getOpenShippingNoticeQuantity(stockNum);
+        int neededIncoming = openNoticeQuantity + quantityToAdd;
+
+        // If current replenishment already covers the notice quantity,
+        // do not count the notice again.
+        int extraReplenishmentNeeded = Math.max(0, neededIncoming - replenishment);
+
+        if (quantity + replenishment + extraReplenishmentNeeded > maxStock) {
             System.out.println("This notice would exceed the maximum stock level.");
-            System.out.println("Current quantity: " + quantity + ", current replenishment: " + replenishment + ", max: " + maxStock);
+            System.out.println("Current quantity: " + quantity +
+                    ", current replenishment: " + replenishment +
+                    ", open notice quantity: " + openNoticeQuantity +
+                    ", new notice quantity: " + quantityToAdd +
+                    ", max: " + maxStock);
             return false;
         }
+
         return true;
+    }
+
+    static int getOpenShippingNoticeQuantity(String stockNum) throws SQLException {
+        PreparedStatement ps = con.prepareStatement(
+                "SELECT NVL(SUM(sn.quantity), 0) " +
+                "FROM ShippingNotice sn " +
+                "WHERE TRIM(sn.stock_number) = TRIM(?) " +
+                "AND NOT EXISTS (" +
+                "    SELECT 1 FROM Shipment sh " +
+                "    WHERE TRIM(sh.notice_id) = TRIM(sn.notice_id) " +
+                "    AND TRIM(sh.stock_number) = TRIM(sn.stock_number)" +
+                ")"
+        );
+
+        ps.setString(1, stockNum);
+        ResultSet rs = ps.executeQuery();
+
+        int total = 0;
+        if (rs.next()) {
+            total = rs.getInt(1);
+        }
+
+        rs.close();
+        ps.close();
+
+        return total;
+    }
+
+    static int getReplenishmentToAddForNotice(String stockNum, int noticeQuantityToAdd) throws SQLException {
+        int openNoticeQuantity = getOpenShippingNoticeQuantity(stockNum);
+        int currentReplenishment = getReplenishment(stockNum);
+
+        int neededIncoming = openNoticeQuantity + noticeQuantityToAdd;
+
+        return Math.max(0, neededIncoming - currentReplenishment);
     }
 
     static boolean canReceiveShipment(String stockNum, int quantityReceived) throws SQLException {
