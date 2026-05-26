@@ -1,10 +1,10 @@
 CREATE TABLE Products (
     StockNumber CHAR(7),
     Category VARCHAR2(20),
-    Manufacturer VARCHAR2(20),
+    Manufacturer VARCHAR2(20) NOT NULL,
     ModelNumber VARCHAR2(20),
-    Warranty INT,
-    Price NUMBER(10, 2),
+    Warranty INT NOT NULL,
+    Price NUMBER(10, 2) NOT NULL,
     PRIMARY KEY (StockNumber),
     CONSTRAINT chk_prod_price CHECK (Price >= 0),
     CONSTRAINT chk_prod_stock CHECK (REGEXP_LIKE(StockNumber, '^[A-Z]{2}[0-9]{5}$'))
@@ -30,7 +30,7 @@ CREATE TABLE Customer (
     Identifier VARCHAR2(20),
     Password VARCHAR2(20) NOT NULL,
     Name VARCHAR2(20) NOT NULL,
-    Email VARCHAR2(20),
+    Email VARCHAR2(20) ,
     Address VARCHAR2(60),
     Status VARCHAR2(20) DEFAULT 'New',
     PRIMARY KEY (Identifier)
@@ -51,7 +51,7 @@ CREATE TABLE DiscountRules (
 
 CREATE TABLE Shopping_Cart (
     CartId VARCHAR2(20),
-    CreatedDate DATE DEFAULT SYSDATE,
+    CreatedDate DATE DEFAULT SYSDATE NOT NULL,
     Identifier VARCHAR2(20) NOT NULL UNIQUE,
     PRIMARY KEY (CartId),
     FOREIGN KEY (Identifier) REFERENCES Customer(Identifier) ON DELETE CASCADE
@@ -60,11 +60,11 @@ CREATE TABLE Shopping_Cart (
 CREATE TABLE Customer_Orders (
     OrderNum VARCHAR2(30),
     Identifier VARCHAR2(20) NOT NULL,
-    Subtotal NUMBER(10, 2),
-    OrderDate DATE DEFAULT SYSDATE,
+    Subtotal NUMBER(10, 2) NOT NULL,
+    OrderDate DATE DEFAULT SYSDATE NOT NULL,
     Discount NUMBER(10, 2),
     Shipping VARCHAR(20),
-    Total NUMBER(10, 2),
+    Total NUMBER(10, 2) NOT NULL,
     PRIMARY KEY (OrderNum),
     FOREIGN KEY (Identifier) REFERENCES Customer(Identifier),
     CONSTRAINT chk_order_math CHECK (Total >= 0 AND Discount >= 0 AND Subtotal >= 0)
@@ -73,7 +73,7 @@ CREATE TABLE Customer_Orders (
 CREATE TABLE Cart_Items (
     StockNumber CHAR(7),
     CartId VARCHAR2(20),
-    Quantity INT,
+    Quantity INT NOT NULL,
     PRIMARY KEY (StockNumber, CartId),
     FOREIGN KEY (StockNumber) REFERENCES Products(StockNumber) ON DELETE CASCADE,
     FOREIGN KEY (CartId) REFERENCES Shopping_Cart(CartId) ON DELETE CASCADE,
@@ -83,7 +83,7 @@ CREATE TABLE Cart_Items (
 CREATE TABLE Order_Item (
     StockNumber CHAR(7),
     OrderNum VARCHAR2(30),
-    Quantity INT,
+    Quantity INT NOT NULL,
     SavedUnitPrice NUMBER(10, 2) NOT NULL,
     PRIMARY KEY (StockNumber, OrderNum),
     FOREIGN KEY (StockNumber) REFERENCES Products(StockNumber),
@@ -311,3 +311,5 @@ INSERT INTO InventoryProduct (stock_number, manufacturer_name, model_number, qua
 VALUES ('AA00602', 'Canon', 'L738', 3, 2, 5, 'F3', 0);
 
 COMMIT;
+
+-- export DB_USER=ADMIN export DB_PASSWORD=Vicecreamlover*1 export TNS_ADMIN=/Users/vanessaxu/Downloads/Wallet_CS174AShoppingDatabase

@@ -90,8 +90,8 @@ public class CS174AShoppingDatabase {
 
         PreparedStatement checkPs = con.prepareStatement(
                 "SELECT Status FROM Customer " +
-                        "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
-                        "AND TRIM(Password) = TRIM(?)"
+                        "WHERE Identifier = ? " +
+                        "AND Password = ?"
         );
 
         checkPs.setString(1, id);
@@ -168,7 +168,7 @@ public class CS174AShoppingDatabase {
         try {
             // pre-check to avoid ORA-00001
             PreparedStatement preCheck = con.prepareStatement(
-                    "SELECT 1 FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+                    "SELECT 1 FROM Customer WHERE Identifier = ?"
             );
             preCheck.setString(1, id);
             ResultSet exists = preCheck.executeQuery();
@@ -241,8 +241,8 @@ public class CS174AShoppingDatabase {
 
         PreparedStatement ps = con.prepareStatement(
                 "SELECT Identifier FROM Managers " +
-                        "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
-                        "AND TRIM(Password) = TRIM(?)"
+                        "WHERE Identifier = ? " +
+                        "AND Password = ?"
         );
 
         ps.setString(1, id);
@@ -367,7 +367,7 @@ public class CS174AShoppingDatabase {
         String val = scanner.nextLine();
         ps = con.prepareStatement(
             "SELECT StockNumber, Category, Manufacturer, ModelNumber, Price, Warranty " +
-            "FROM Products WHERE LOWER(TRIM(Manufacturer)) = LOWER(TRIM(?))"
+            "FROM Products WHERE Manufacturer = ?"
         );
         ps.setString(1, val);
 
@@ -376,7 +376,7 @@ public class CS174AShoppingDatabase {
         String val = scanner.nextLine();
         ps = con.prepareStatement(
             "SELECT StockNumber, Category, Manufacturer, ModelNumber, Price, Warranty " +
-            "FROM Products WHERE LOWER(TRIM(ModelNumber)) = LOWER(TRIM(?))"
+            "FROM Products WHERE ModelNumber = ?"
         );
         ps.setString(1, val);
 
@@ -385,7 +385,7 @@ public class CS174AShoppingDatabase {
         String val = scanner.nextLine();
         ps = con.prepareStatement(
             "SELECT StockNumber, Category, Manufacturer, ModelNumber, Price, Warranty " +
-            "FROM Products WHERE LOWER(TRIM(Category)) = LOWER(TRIM(?))"
+            "FROM Products WHERE Category = ?"
         );
         ps.setString(1, val);
 
@@ -444,7 +444,7 @@ public class CS174AShoppingDatabase {
 }
 static void addToCart(String customerId) throws SQLException {
     PreparedStatement getCart = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT CartId FROM Shopping_Cart WHERE Identifier = ?"
     );
     getCart.setString(1, customerId);
     ResultSet rs1 = getCart.executeQuery();
@@ -470,7 +470,7 @@ static void addToCart(String customerId) throws SQLException {
     }
 
     PreparedStatement customerCheck = con.prepareStatement(
-        "SELECT Identifier FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT Identifier FROM Customer WHERE Identifier = ?"
     );
     customerCheck.setString(1, customerId);
     ResultSet customerRs = customerCheck.executeQuery();
@@ -514,7 +514,7 @@ static void addToCart(String customerId) throws SQLException {
     }
 
     PreparedStatement check = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
+        "SELECT CartId FROM Shopping_Cart WHERE CartId = ?"
     );
     check.setString(1, cartId);
     ResultSet rs = check.executeQuery();
@@ -531,7 +531,7 @@ static void addToCart(String customerId) throws SQLException {
 
     PreparedStatement updateItem = con.prepareStatement(
         "UPDATE Cart_Items SET Quantity = Quantity + ? " +
-        "WHERE TRIM(StockNumber) = TRIM(?) AND LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
+        "WHERE TRIM(StockNumber) = TRIM(?) AND CartId = ?"
     );
     updateItem.setInt(1, quantity);
     updateItem.setString(2, stockNum);
@@ -556,7 +556,7 @@ static void addToCart(String customerId) throws SQLException {
 
    static void viewCart(String customerId) throws SQLException {
     PreparedStatement getCart = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT CartId FROM Shopping_Cart WHERE Identifier = ?"
     );
     getCart.setString(1, customerId);
     ResultSet rs2 = getCart.executeQuery();
@@ -574,7 +574,7 @@ static void addToCart(String customerId) throws SQLException {
         "SELECT ci.StockNumber, p.Manufacturer, p.Price, ci.Quantity " +
         "FROM Cart_Items ci, Products p " +
         "WHERE TRIM(ci.StockNumber) = TRIM(p.StockNumber) " +
-        "AND LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?))"
+        "AND ci.CartId = ?"
     );
 
     ps.setString(1, cartId);
@@ -603,7 +603,7 @@ static void addToCart(String customerId) throws SQLException {
 
 static void removeFromCart(String customerId) throws SQLException {
     PreparedStatement getCart = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT CartId FROM Shopping_Cart WHERE Identifier = ?"
     );
     getCart.setString(1, customerId);
     ResultSet cartRs = getCart.executeQuery();
@@ -624,7 +624,7 @@ static void removeFromCart(String customerId) throws SQLException {
 
     PreparedStatement ps = con.prepareStatement(
         "DELETE FROM Cart_Items " +
-        "WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "WHERE CartId = ? " +
         "AND TRIM(StockNumber) = TRIM(?)"
     );
 
@@ -645,7 +645,7 @@ static void removeFromCart(String customerId) throws SQLException {
 
     static void placeOrder(String customerId) throws SQLException {
     PreparedStatement getCart = con.prepareStatement(
-        "SELECT CartId FROM Shopping_Cart WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT CartId FROM Shopping_Cart WHERE Identifier = ?"
     );
     getCart.setString(1, customerId);
     ResultSet cartRs = getCart.executeQuery();
@@ -678,7 +678,7 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
     PreparedStatement ps = con.prepareStatement(
         "SELECT ci.StockNumber, ci.Quantity, p.Price " +
         "FROM Cart_Items ci, Products p " +
-        "WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "WHERE ci.CartId = ? " +
         "AND TRIM(ci.StockNumber) = TRIM(p.StockNumber)"
     );
 
@@ -702,7 +702,7 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
     }
 
     PreparedStatement cust = con.prepareStatement(
-        "SELECT Status FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT Status FROM Customer WHERE Identifier = ?"
     );
     cust.setString(1, customerId);
     ResultSet crs = cust.executeQuery();
@@ -761,7 +761,7 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
     ps = con.prepareStatement(
         "SELECT ci.StockNumber, ci.Quantity, p.Price " +
         "FROM Cart_Items ci, Products p " +
-        "WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "WHERE ci.CartId = ? " +
         "AND TRIM(ci.StockNumber) = TRIM(p.StockNumber)"
     );
 
@@ -790,7 +790,7 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
     insertWarehouseOrderFromCart(orderNum, cartId);
 
     PreparedStatement clear = con.prepareStatement(
-        "DELETE FROM Cart_Items WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?))"
+        "DELETE FROM Cart_Items WHERE CartId = ?"
     );
 
     clear.setString(1, cartId);
@@ -807,7 +807,7 @@ static void placeOrder(String customerId, String cartId, String shippingMethod) 
 static void viewOrderHistory(String customerId) throws SQLException {
     PreparedStatement ps = con.prepareStatement(
         "SELECT OrderNum, OrderDate, Subtotal, Discount, Total, Shipping " +
-        "FROM Customer_Orders WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "FROM Customer_Orders WHERE Identifier = ?"
     );
 
     ps.setString(1, customerId);
@@ -879,9 +879,9 @@ static void viewOrderByNumber() throws SQLException {
         "SELECT o.OrderNum, o.OrderDate, o.Subtotal, o.Discount, o.Total, o.Shipping, " +
         "oi.StockNumber, p.Manufacturer, p.Price, oi.Quantity " +
         "FROM Customer_Orders o, Order_Item oi, Products p " +
-        "WHERE LOWER(TRIM(o.OrderNum)) = LOWER(TRIM(oi.OrderNum)) " +
+        "WHERE o.OrderNum = oi.OrderNum " +
         "AND TRIM(oi.StockNumber) = TRIM(p.StockNumber) " +
-        "AND LOWER(TRIM(o.OrderNum)) = LOWER(TRIM(?))"
+        "AND o.OrderNum = ?"
     );
 
     ps.setString(1, orderNum);
@@ -926,8 +926,8 @@ static void rerunOrder(String customerId) throws SQLException {
     String oldOrderNum = scanner.nextLine();
 
     PreparedStatement orderCheck = con.prepareStatement(
-        "SELECT Shipping FROM Customer_Orders WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?)) " +
-        "AND LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT Shipping FROM Customer_Orders WHERE OrderNum = ? " +
+        "AND Identifier = ?"
     );
 
     orderCheck.setString(1, oldOrderNum);
@@ -948,7 +948,7 @@ static void rerunOrder(String customerId) throws SQLException {
     orderCheck.close();
 
     PreparedStatement itemsPs = con.prepareStatement(
-        "SELECT StockNumber, Quantity FROM Order_Item WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?))"
+        "SELECT StockNumber, Quantity FROM Order_Item WHERE OrderNum = ?"
     );
 
     itemsPs.setString(1, oldOrderNum);
@@ -1016,7 +1016,7 @@ static void rerunOrder(String customerId) throws SQLException {
     if (!stockAvailable || stockNumbers.isEmpty()) return;
 
     PreparedStatement custPs = con.prepareStatement(
-        "SELECT Status FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT Status FROM Customer WHERE Identifier = ?"
     );
 
     custPs.setString(1, customerId);
@@ -1122,7 +1122,7 @@ static void updateCustomerStatus(String customerId) throws SQLException {
     PreparedStatement statusPs = con.prepareStatement(
         "SELECT NVL(SUM(Total), 0) FROM (" +
         "SELECT Total FROM Customer_Orders " +
-        "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
+        "WHERE Identifier = ? " +
         "ORDER BY OrderDate DESC, OrderNum DESC FETCH FIRST 3 ROWS ONLY)"
     );
 
@@ -1142,7 +1142,7 @@ static void updateCustomerStatus(String customerId) throws SQLException {
     else newStatus = "new";
 
     PreparedStatement updatePs = con.prepareStatement(
-        "UPDATE Customer SET Status = ? WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "UPDATE Customer SET Status = ? WHERE Identifier = ?"
     );
 
     updatePs.setString(1, newStatus);
@@ -1172,7 +1172,7 @@ static int getInventoryQuantity(String stockNum) throws SQLException {
 static int getCartQuantityForStock(String cartId, String stockNum) throws SQLException {
     PreparedStatement ps = con.prepareStatement(
         "SELECT NVL(SUM(Quantity), 0) FROM Cart_Items " +
-        "WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "WHERE CartId = ? " +
         "AND TRIM(StockNumber) = TRIM(?)"
     );
     ps.setString(1, cartId);
@@ -1195,7 +1195,7 @@ static boolean cartHasEnoughInventory(String cartId) throws SQLException {
         "FROM (" +
         "    SELECT TRIM(StockNumber) AS StockNumber, SUM(Quantity) AS CartQty " +
         "    FROM Cart_Items " +
-        "    WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "    WHERE CartId = ? " +
         "    GROUP BY TRIM(StockNumber)" +
         ") q LEFT JOIN InventoryProduct ip " +
         "ON TRIM(ip.stock_number) = q.StockNumber " +
@@ -1222,12 +1222,12 @@ static void deductInventoryForCart(String cartId) throws SQLException {
         "UPDATE InventoryProduct ip " +
         "SET quantity = quantity - (" +
         "    SELECT SUM(ci.Quantity) FROM Cart_Items ci " +
-        "    WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "    WHERE ci.CartId = ? " +
         "    AND TRIM(ci.StockNumber) = TRIM(ip.stock_number)" +
         ") " +
         "WHERE EXISTS (" +
         "    SELECT 1 FROM Cart_Items ci " +
-        "    WHERE LOWER(TRIM(ci.CartId)) = LOWER(TRIM(?)) " +
+        "    WHERE ci.CartId = ? " +
         "    AND TRIM(ci.StockNumber) = TRIM(ip.stock_number)" +
         ")"
     );
@@ -1242,7 +1242,7 @@ static void insertWarehouseOrderFromCart(String orderNum, String cartId) throws 
         "INSERT INTO WarehouseOrder (order_number, stock_number, quantity_ordered, order_date, status) " +
         "SELECT ?, TRIM(StockNumber), SUM(Quantity), SYSDATE, 'filled' " +
         "FROM Cart_Items " +
-        "WHERE LOWER(TRIM(CartId)) = LOWER(TRIM(?)) " +
+        "WHERE CartId = ? " +
         "GROUP BY TRIM(StockNumber)"
     );
     ps.setString(1, orderNum);
@@ -1256,7 +1256,7 @@ static void insertWarehouseOrderFromOrderItems(String orderNum) throws SQLExcept
         "INSERT INTO WarehouseOrder (order_number, stock_number, quantity_ordered, order_date, status) " +
         "SELECT TRIM(OrderNum), TRIM(StockNumber), SUM(Quantity), SYSDATE, 'filled' " +
         "FROM Order_Item " +
-        "WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?)) " +
+        "WHERE OrderNum = ? " +
         "GROUP BY TRIM(OrderNum), TRIM(StockNumber)"
     );
     ps.setString(1, orderNum);
@@ -1285,7 +1285,7 @@ static void monthlySummary() throws SQLException {
         "SUM(oi.Quantity * oi.SavedUnitPrice) AS TotalSales " +
         "FROM Products p " +
         "JOIN Order_Item oi ON TRIM(p.StockNumber) = TRIM(oi.StockNumber) " +
-        "JOIN Customer_Orders co ON LOWER(TRIM(oi.OrderNum)) = LOWER(TRIM(co.OrderNum)) " +
+        "JOIN Customer_Orders co ON oi.OrderNum = co.OrderNum " +
         "WHERE TO_CHAR(co.OrderDate, 'MM') = ? " +
         "AND TO_CHAR(co.OrderDate, 'YYYY') = ? " +
         "GROUP BY p.StockNumber, p.Category"
@@ -1321,7 +1321,7 @@ static void monthlySummary() throws SQLException {
         "SUM(oi.Quantity * p.Price) AS TotalSales " +
         "FROM Products p, Order_Item oi, Customer_Orders co " +
         "WHERE TRIM(p.StockNumber) = TRIM(oi.StockNumber) " +
-        "AND LOWER(TRIM(oi.OrderNum)) = LOWER(TRIM(co.OrderNum)) " +
+        "AND oi.OrderNum = co.OrderNum " +
         "AND TO_CHAR(co.OrderDate, 'YYYY-MM') = ? " +
         "GROUP BY p.Category " +
         "ORDER BY TotalSales DESC"
@@ -1354,7 +1354,7 @@ static void monthlySummary() throws SQLException {
         "SELECT c.Identifier, c.Name, " +
         "SUM(co.Total) AS TotalSpent " +
         "FROM Customer c, Customer_Orders co " +
-        "WHERE LOWER(TRIM(c.Identifier)) = LOWER(TRIM(co.Identifier)) " +
+        "WHERE c.Identifier = co.Identifier " +
         "AND TO_CHAR(co.OrderDate, 'YYYY-MM') = ? " +
         "GROUP BY c.Identifier, c.Name " +
         "ORDER BY TotalSpent DESC" +
@@ -1383,7 +1383,7 @@ static void adjustCustomerStatus() throws SQLException {
     String customerId = scanner.nextLine();
 
     PreparedStatement check = con.prepareStatement(
-        "SELECT Identifier FROM Customer WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "SELECT Identifier FROM Customer WHERE Identifier = ?"
     );
 
     check.setString(1, customerId);
@@ -1411,7 +1411,7 @@ static void adjustCustomerStatus() throws SQLException {
         PreparedStatement statusUpdate = con.prepareStatement(
             "SELECT SUM(Total) FROM (" +
             "SELECT Total FROM Customer_Orders " +
-            "WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?)) " +
+            "WHERE Identifier = ? " +
             "ORDER BY OrderDate DESC FETCH FIRST 3 ROWS ONLY)"
         );
 
@@ -1445,7 +1445,7 @@ static void adjustCustomerStatus() throws SQLException {
     }
 
     PreparedStatement ps = con.prepareStatement(
-        "UPDATE Customer SET Status = ? WHERE LOWER(TRIM(Identifier)) = LOWER(TRIM(?))"
+        "UPDATE Customer SET Status = ? WHERE Identifier = ?"
     );
 
     ps.setString(1, newStatus);
@@ -1470,7 +1470,7 @@ static void sendOrderToManufacturer() throws SQLException {
     PreparedStatement prodCheck = con.prepareStatement(
         "SELECT StockNumber, Manufacturer, ModelNumber, Price " +
         "FROM Products " +
-        "WHERE LOWER(TRIM(Manufacturer)) = LOWER(TRIM(?)) " +
+        "WHERE Manufacturer = ? " +
         "AND TRIM(StockNumber) = TRIM(?)"
     );
 
@@ -1573,7 +1573,7 @@ static void deleteTransactions() throws SQLException {
     String orderNum = scanner.nextLine();
 
     PreparedStatement check = con.prepareStatement(
-        "SELECT OrderNum FROM Customer_Orders WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?))"
+        "SELECT OrderNum FROM Customer_Orders WHERE OrderNum = ?"
     );
     check.setString(1, orderNum);
     ResultSet rs = check.executeQuery();
@@ -1589,14 +1589,14 @@ static void deleteTransactions() throws SQLException {
     check.close();
 
     PreparedStatement ps1 = con.prepareStatement(
-        "DELETE FROM Order_Item WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?))"
+        "DELETE FROM Order_Item WHERE OrderNum = ?"
     );
     ps1.setString(1, orderNum);
     ps1.executeUpdate();
     ps1.close();
 
     PreparedStatement ps2 = con.prepareStatement(
-        "DELETE FROM Customer_Orders WHERE LOWER(TRIM(OrderNum)) = LOWER(TRIM(?))"
+        "DELETE FROM Customer_Orders WHERE OrderNum = ?"
     );
     ps2.setString(1, orderNum);
     ps2.executeUpdate();
@@ -1972,10 +1972,10 @@ static double readDoubleSafe(String prompt) {
             PreparedStatement ps1 = con.prepareStatement(
                     "INSERT INTO WarehouseOrder " +
                     "(order_number, stock_number, quantity_ordered, order_date, status) " +
-                    "SELECT TRIM(oi.OrderNum), TRIM(oi.StockNumber), SUM(oi.Quantity), SYSDATE, 'pending' " +
+                    "SELECT oi.OrderNum, TRIM(oi.StockNumber), SUM(oi.Quantity), SYSDATE, 'pending' " +
                     "FROM Order_Item oi " +
-                    "WHERE TRIM(oi.OrderNum) = TRIM(?) " +
-                    "GROUP BY TRIM(oi.OrderNum), TRIM(oi.StockNumber)"
+                    "WHERE oi.OrderNum = ? " +
+                    "GROUP BY oi.OrderNum, TRIM(oi.StockNumber)"
             );
             ps1.setString(1, orderNum);
             int inserted = ps1.executeUpdate();
@@ -1986,12 +1986,12 @@ static double readDoubleSafe(String prompt) {
                     "SET quantity = quantity - (" +
                     "    SELECT SUM(oi.Quantity) " +
                     "    FROM Order_Item oi " +
-                    "    WHERE TRIM(oi.OrderNum) = TRIM(?) " +
+                    "    WHERE oi.OrderNum = ? " +
                     "    AND TRIM(oi.StockNumber) = TRIM(ip.stock_number)" +
                     ") " +
                     "WHERE EXISTS (" +
                     "    SELECT 1 FROM Order_Item oi " +
-                    "    WHERE TRIM(oi.OrderNum) = TRIM(?) " +
+                    "    WHERE oi.OrderNum = ? " +
                     "    AND TRIM(oi.StockNumber) = TRIM(ip.stock_number)" +
                     ")"
             );
@@ -2002,7 +2002,7 @@ static double readDoubleSafe(String prompt) {
 
             PreparedStatement ps3 = con.prepareStatement(
                     "UPDATE WarehouseOrder SET status = 'filled' " +
-                    "WHERE TRIM(order_number) = TRIM(?)"
+                    "WHERE order_number = ?"
             );
             ps3.setString(1, orderNum);
             ps3.executeUpdate();
@@ -2071,7 +2071,7 @@ static double readDoubleSafe(String prompt) {
                         "(replenishment_order_id, stock_number, quantity_ordered, replenishment_order_date, status) " +
                         "SELECT ?, stock_number, max_stock_level - quantity - replenishment, SYSDATE, 'pending' " +
                         "FROM InventoryProduct " +
-                        "WHERE LOWER(TRIM(manufacturer_name)) = LOWER(TRIM(?)) " +
+                        "WHERE manufacturer_name = ? " +
                         "AND quantity < max_stock_level " +
                         "AND max_stock_level - quantity - replenishment > 0"
                 );
@@ -2090,12 +2090,12 @@ static double readDoubleSafe(String prompt) {
                         "SET replenishment = replenishment + (" +
                         "    SELECT ro.quantity_ordered " +
                         "    FROM ReplenishmentOrder ro " +
-                        "    WHERE TRIM(ro.replenishment_order_id) = TRIM(?) " +
+                        "    WHERE ro.replenishment_order_id = ? " +
                         "    AND TRIM(ro.stock_number) = TRIM(ip.stock_number)" +
                         ") " +
                         "WHERE EXISTS (" +
                         "    SELECT 1 FROM ReplenishmentOrder ro " +
-                        "    WHERE TRIM(ro.replenishment_order_id) = TRIM(?) " +
+                        "    WHERE ro.replenishment_order_id = ? " +
                         "    AND TRIM(ro.stock_number) = TRIM(ip.stock_number)" +
                         ")"
                 );
@@ -2118,8 +2118,8 @@ static double readDoubleSafe(String prompt) {
     static String findStockNumber(String manufacturer, String modelNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT stock_number FROM InventoryProduct " +
-                "WHERE LOWER(TRIM(manufacturer_name)) = LOWER(TRIM(?)) " +
-                "AND LOWER(TRIM(model_number)) = LOWER(TRIM(?))"
+                "WHERE manufacturer_name = ? " +
+                "AND model_number = ?"
         );
         ps.setString(1, manufacturer);
         ps.setString(2, modelNum);
@@ -2137,7 +2137,7 @@ static double readDoubleSafe(String prompt) {
 
     static boolean noticeIdExists(String noticeId) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
-                "SELECT notice_id FROM ShippingNotice WHERE TRIM(notice_id) = TRIM(?)"
+                "SELECT notice_id FROM ShippingNotice WHERE notice_id = ?"
         );
         ps.setString(1, noticeId);
         ResultSet rs = ps.executeQuery();
@@ -2149,7 +2149,7 @@ static double readDoubleSafe(String prompt) {
 
     static String getShippingCompanyForNotice(String noticeId) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
-                "SELECT shipping_company_name FROM ShippingNotice WHERE TRIM(notice_id) = TRIM(?)"
+                "SELECT shipping_company_name FROM ShippingNotice WHERE notice_id = ?"
         );
         ps.setString(1, noticeId);
         ResultSet rs = ps.executeQuery();
@@ -2213,7 +2213,7 @@ static double readDoubleSafe(String prompt) {
                 "WHERE TRIM(sn.stock_number) = TRIM(?) " +
                 "AND NOT EXISTS (" +
                 "    SELECT 1 FROM Shipment sh " +
-                "    WHERE TRIM(sh.notice_id) = TRIM(sn.notice_id) " +
+                "    WHERE sh.notice_id = sn.notice_id " +
                 "    AND TRIM(sh.stock_number) = TRIM(sn.stock_number)" +
                 ")"
         );
@@ -2273,7 +2273,7 @@ static double readDoubleSafe(String prompt) {
     static void addQuantityToShippingNoticeItem(String noticeId, String stockNum, int quantity) throws SQLException {
         PreparedStatement ps1 = con.prepareStatement(
                 "UPDATE ShippingNotice SET quantity = quantity + ? " +
-                "WHERE TRIM(notice_id) = TRIM(?) AND TRIM(stock_number) = TRIM(?)"
+                "WHERE notice_id = ? AND TRIM(stock_number) = TRIM(?)"
         );
         ps1.setInt(1, quantity);
         ps1.setString(2, noticeId);
@@ -2324,7 +2324,7 @@ static double readDoubleSafe(String prompt) {
     static boolean shippingNoticeExists(String noticeId, String stockNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT notice_id FROM ShippingNotice " +
-                "WHERE TRIM(notice_id) = TRIM(?) AND TRIM(stock_number) = TRIM(?)"
+                "WHERE notice_id = ? AND TRIM(stock_number) = TRIM(?)"
         );
         ps.setString(1, noticeId);
         ps.setString(2, stockNum);
@@ -2338,7 +2338,7 @@ static double readDoubleSafe(String prompt) {
     static int getNoticeQuantity(String noticeId, String stockNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT quantity FROM ShippingNotice " +
-                "WHERE TRIM(notice_id) = TRIM(?) AND TRIM(stock_number) = TRIM(?)"
+                "WHERE notice_id = ? AND TRIM(stock_number) = TRIM(?)"
         );
         ps.setString(1, noticeId);
         ps.setString(2, stockNum);
@@ -2357,7 +2357,7 @@ static double readDoubleSafe(String prompt) {
     static boolean shipmentIdStockExists(String shipmentId, String stockNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT shipment_id FROM Shipment " +
-                "WHERE TRIM(shipment_id) = TRIM(?) AND TRIM(stock_number) = TRIM(?)"
+                "WHERE shipment_id = ? AND TRIM(stock_number) = TRIM(?)"
         );
         ps.setString(1, shipmentId);
         ps.setString(2, stockNum);
@@ -2371,7 +2371,7 @@ static double readDoubleSafe(String prompt) {
     static boolean shipmentNoticeItemAlreadyReceived(String noticeId, String stockNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT shipment_id FROM Shipment " +
-                "WHERE TRIM(notice_id) = TRIM(?) AND TRIM(stock_number) = TRIM(?)"
+                "WHERE notice_id = ? AND TRIM(stock_number) = TRIM(?)"
         );
         ps.setString(1, noticeId);
         ps.setString(2, stockNum);
@@ -2402,7 +2402,7 @@ static double readDoubleSafe(String prompt) {
 
     static boolean orderHasItems(String orderNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
-                "SELECT OrderNum FROM Order_Item WHERE TRIM(OrderNum) = TRIM(?)"
+                "SELECT OrderNum FROM Order_Item WHERE OrderNum = ?"
         );
         ps.setString(1, orderNum);
         ResultSet rs = ps.executeQuery();
@@ -2414,7 +2414,7 @@ static double readDoubleSafe(String prompt) {
 
     static boolean warehouseOrderExists(String orderNum) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
-                "SELECT order_number FROM WarehouseOrder WHERE TRIM(order_number) = TRIM(?)"
+                "SELECT order_number FROM WarehouseOrder WHERE order_number = ?"
         );
         ps.setString(1, orderNum);
         ResultSet rs = ps.executeQuery();
@@ -2430,7 +2430,7 @@ static double readDoubleSafe(String prompt) {
                 "FROM (" +
                 "    SELECT TRIM(StockNumber) AS stock_number, SUM(Quantity) AS quantity_ordered " +
                 "    FROM Order_Item " +
-                "    WHERE TRIM(OrderNum) = TRIM(?) " +
+                "    WHERE OrderNum = ? " +
                 "    GROUP BY TRIM(StockNumber)" +
                 ") q LEFT JOIN InventoryProduct ip " +
                 "ON TRIM(ip.stock_number) = q.stock_number " +
@@ -2465,7 +2465,7 @@ static double readDoubleSafe(String prompt) {
     static boolean replenishmentOrderIdExists(String id) throws SQLException {
         PreparedStatement ps = con.prepareStatement(
                 "SELECT replenishment_order_id FROM ReplenishmentOrder " +
-                "WHERE TRIM(replenishment_order_id) = TRIM(?)"
+                "WHERE replenishment_order_id = ?"
         );
         ps.setString(1, id);
         ResultSet rs = ps.executeQuery();
@@ -2531,8 +2531,8 @@ static double readDoubleSafe(String prompt) {
 
     static boolean validLocation(String location) {
         if (!validText(location, "Location")) return false;
-        if (!location.matches("^[A-Za-z][1-9][0-9]*$")) {
-            System.out.println("Location must be a letter followed by a positive number without leading zeros, for example A1.");
+        if (!location.matches("^[A-Za-z](0|[1-9][0-9]*)$")) {
+            System.out.println("Location must be a letter followed by 0 or a number without leading zeros, for example A0 or A12.");
             return false;
         }
         return true;
