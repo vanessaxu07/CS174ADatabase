@@ -5,7 +5,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -559,7 +558,7 @@ static void addToCart(String customerId) throws SQLException {
 
     int currentCartQty = getCartQuantityForStock(cartId, stockNum);
     if (currentCartQty + quantity > inventoryQty) {
-        System.out.println("Sorry, there are only " + inventoryQty + " left in stock right now.");
+        System.out.println("Not enough inventory for product " + stockNum + ".");
         return;
     }
 
@@ -864,9 +863,10 @@ static void viewOrderHistory(String customerId) throws SQLException {
     ResultSet rs = ps.executeQuery();
 
     System.out.println("\n" + String.format(
-        "%-12s %-15s %-12s %-12s %-10s %s",
-        "Order#", "Date", "Subtotal", "Discount", "Total", "Shipping"
+    "%-20s %-12s %-12s %-12s %-10s %s",
+    "Order#", "Date", "Subtotal", "Discount", "Total", "Shipping"
     ));
+
 
     System.out.println("------------------------------------------------------------------------");
 
@@ -874,14 +874,14 @@ static void viewOrderHistory(String customerId) throws SQLException {
 
     while (rs.next()) {
         found = true;
-        System.out.printf("%-12s %-15s %-12.2f %-12.2f %-10.2f %s%n",
-            rs.getString("OrderNum"),
-            rs.getString("OrderDate"),
-            rs.getDouble("Subtotal"),
-            rs.getDouble("Discount"),
-            rs.getDouble("Total"),
-            rs.getString("Shipping")
-        );
+        System.out.printf("%-20s %-12s %-12.2f %-12.2f %-10.2f %s%n",
+        rs.getString("OrderNum"),
+        rs.getString("OrderDate").substring(0, 10),
+        rs.getDouble("Subtotal"),
+        rs.getDouble("Discount"),
+        rs.getDouble("Total"),
+        rs.getString("Shipping")
+    );
     }
 
     if (!found) System.out.println("No orders found for this customer.");
