@@ -1,4 +1,4 @@
-package org.ivc.dbms.Main;
+ package org.ivc.dbms.Main;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -49,7 +49,7 @@ public class CS174AShoppingDatabase {
 
             boolean running = true;
             while (running) {
-                System.out.println("\n--- Main Menu ---");
+                System.out.println("\n------ Main Menu ------");
                 System.out.println("1. eMART Customer Login");
                 System.out.println("2. eMART Manager Login");
                 System.out.println("3. eDEPOT Warehouse Menu");
@@ -111,6 +111,8 @@ public class CS174AShoppingDatabase {
 
             System.out.println("Welcome back!");
             System.out.println("Customer status: " + status);
+
+            ensureCartExists(id);
 
             runCustomerMenu(id);
             return;
@@ -232,6 +234,36 @@ public class CS174AShoppingDatabase {
     }
 }
 
+    static void ensureCartExists(String customerId) throws SQLException {
+        PreparedStatement check = con.prepareStatement(
+                "SELECT CartId FROM Shopping_Cart WHERE Identifier = ?"
+        );
+        check.setString(1, customerId);
+        ResultSet rs = check.executeQuery();
+
+        if (rs.next()) {
+            rs.close();
+            check.close();
+            return;
+        }
+
+        rs.close();
+        check.close();
+
+        String cartId = "CART-" + System.currentTimeMillis();
+
+        PreparedStatement insert = con.prepareStatement(
+                "INSERT INTO Shopping_Cart (CartId, CreatedDate, Identifier) VALUES (?, ?, ?)"
+        );
+        insert.setString(1, cartId);
+        insert.setDate(2, java.sql.Date.valueOf(java.time.LocalDate.now()));
+        insert.setString(3, customerId);
+        insert.executeUpdate();
+        insert.close();
+
+        con.commit();
+    }
+
     static void managerLogin() throws SQLException {
         System.out.print("Enter Manager ID: ");
         String id = scanner.nextLine();
@@ -268,7 +300,7 @@ public class CS174AShoppingDatabase {
         boolean running = true;
 
         while (running) {
-            System.out.println("\n--- Customer Menu ---");
+            System.out.println("\n------- Customer Menu -------");
             System.out.println("1. View all products");
             System.out.println("2. Search product");
             System.out.println("3. View cart");
@@ -302,7 +334,7 @@ public class CS174AShoppingDatabase {
         boolean running = true;
 
         while (running) {
-            System.out.println("\n--- Manager Menu ---");
+            System.out.println("\n--------- Manager Menu ---------");
             System.out.println("1. Print monthly sales summary");
             System.out.println("2. Adjust customer status");
             System.out.println("3. Send order to manufacturer");
@@ -323,21 +355,41 @@ public class CS174AShoppingDatabase {
     }
 
     static void viewProducts() throws SQLException {
-        Statement stmt = con.createStatement();
-        ResultSet rs = stmt.executeQuery(
-                "SELECT StockNumber, Category, Manufacturer, Price FROM Products"
+        PreparedStatement ps = con.prepareStatement(
+            "SELECT StockNumber, Category, Manufacturer, ModelNumber, Price, Warranty " +
+            "FROM Products ORDER BY StockNumber"
         );
 
+        ResultSet rs = ps.executeQuery();
+
+        System.out.println("\n" + String.format(
+            "%-12s %-12s %-15s %-15s %-10s %s",
+            "Stock#", "Category", "Manufacturer", "Model", "Price", "Warranty"
+        ));
+
+        System.out.println("-----------------------------------------------------------------------------");
+
+        boolean found = false;
+
         while (rs.next()) {
-            System.out.printf("%s %s %s %.2f%n",
-                    rs.getString("StockNumber"),
-                    rs.getString("Category"),
-                    rs.getString("Manufacturer"),
-                    rs.getDouble("Price"));
+            found = true;
+            System.out.printf(
+                "%-12s %-12s %-15s %-15s $%-9.2f %d months%n",
+                rs.getString("StockNumber").trim(),
+                rs.getString("Category").trim(),
+                rs.getString("Manufacturer").trim(),
+                rs.getString("ModelNumber").trim(),
+                rs.getDouble("Price"),
+                rs.getInt("Warranty")
+            );
+        }
+
+        if (!found) {
+            System.out.println("No products found.");
         }
 
         rs.close();
-        stmt.close();
+        ps.close();
     }
 
     static void searchProduct() throws SQLException {
@@ -507,9 +559,7 @@ static void addToCart(String customerId) throws SQLException {
 
     int currentCartQty = getCartQuantityForStock(cartId, stockNum);
     if (currentCartQty + quantity > inventoryQty) {
-        System.out.println("Not enough inventory for product " + stockNum + ".");
-        System.out.println("Available: " + inventoryQty + ", already in cart: " + currentCartQty +
-                ", requested: " + quantity);
+        System.out.println("Sorry, there are only " + inventoryQty + " left in stock right now.");
         return;
     }
 
