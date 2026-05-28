@@ -98,11 +98,8 @@ public class CS174AShoppingDatabase {
 
         ResultSet rs = checkPs.executeQuery();
 
-        // =========================
         // EXISTING CUSTOMER LOGIN
-        // =========================
         if (rs.next()) {
-
             String status = rs.getString("Status");
 
             rs.close();
@@ -120,9 +117,7 @@ public class CS174AShoppingDatabase {
         rs.close();
         checkPs.close();
 
-        // =========================
         // NEW CUSTOMER FLOW
-        // =========================
         System.out.println("Customer not found or incorrect password.");
         System.out.println("1. Try again");
         System.out.println("2. Create new account");
@@ -150,9 +145,7 @@ public class CS174AShoppingDatabase {
             continue;
         }
 
-        // =========================
         // CREATE NEW CUSTOMER
-        // =========================
         System.out.println("New customer detected. Please enter your information.");
 
         System.out.print("Enter Name: ");
@@ -1744,7 +1737,7 @@ static double readDoubleSafe(String prompt) {
     }
 
     static void receiveShippingNotice() throws SQLException {
-        String noticeId = readText("Enter Notice ID: ");
+        String noticeId = readText("Enter Notice ID (use an existing ID to add items, or create a new one): ");
         if (!validText(noticeId, "Notice ID")) return;
 
         String shippingCompany;
@@ -1753,7 +1746,7 @@ static double readDoubleSafe(String prompt) {
             System.out.println("This notice ID already exists. Adding items to the existing notice.");
             System.out.println("Shipping Company: " + shippingCompany);
         } else {
-            shippingCompany = readText("Enter Shipping Company: ");
+            shippingCompany = readText("Enter Shipping Company for this new notice: ");
             if (!validText(shippingCompany, "Shipping company")) return;
         }
 
@@ -1836,9 +1829,7 @@ static double readDoubleSafe(String prompt) {
             System.out.println("Existing product found. Stock Number: " + stockNum);
 
             if (!canAddReplenishment(stockNum, quantity)) return false;
-
-            // Only add the extra amount not already covered by current replenishment.
-            replenishmentToAdd = getReplenishmentToAddForNotice(stockNum, quantity);
+            replenishmentToAdd = quantity;
         }
 
         if (shippingNoticeExists(noticeId, stockNum)) {
@@ -1879,23 +1870,18 @@ static double readDoubleSafe(String prompt) {
             ps1.executeUpdate();
             ps1.close();
 
-            if (replenishmentToAdd > 0) {
-                PreparedStatement ps2 = con.prepareStatement(
-                        "UPDATE InventoryProduct " +
-                        "SET replenishment = replenishment + ? " +
-                        "WHERE TRIM(stock_number) = TRIM(?)"
-                );
-                ps2.setInt(1, replenishmentToAdd);
-                ps2.setString(2, stockNum);
-                ps2.executeUpdate();
-                ps2.close();
+            PreparedStatement ps2 = con.prepareStatement(
+                    "UPDATE InventoryProduct " +
+                    "SET replenishment = replenishment + ? " +
+                    "WHERE TRIM(stock_number) = TRIM(?)"
+            );
+            ps2.setInt(1, replenishmentToAdd);
+            ps2.setString(2, stockNum);
+            ps2.executeUpdate();
+            ps2.close();
 
-                System.out.println("Shipping notice item received. Replenishment increased by "
-                        + replenishmentToAdd + " for " + stockNum + ".");
-            } else {
-                System.out.println("Shipping notice item received. Existing replenishment already covers "
-                        + stockNum + ".");
-            }
+            System.out.println("Shipping notice item received. Replenishment increased by "
+                    + replenishmentToAdd + " for " + stockNum + ".");
 
             con.commit();
             return true;
@@ -2113,7 +2099,12 @@ static double readDoubleSafe(String prompt) {
                         "FROM InventoryProduct " +
                         "WHERE manufacturer_name = ? " +
                         "AND quantity < max_stock_level " +
-                        "AND max_stock_level - quantity - replenishment > 0"
+                        "AND max_stock_level - quantity - replenishment > 0 " +
+                        "AND NOT EXISTS ( " +
+                        "    SELECT 1 FROM ReplenishmentOrder ro " +
+                        "    WHERE TRIM(ro.stock_number) = TRIM(InventoryProduct.stock_number) " +
+                        "    AND ro.status = 'pending' " +
+                        ")"
                 );
 
                 insertPs.setString(1, replenishmentOrderId);
@@ -2210,20 +2201,12 @@ static double readDoubleSafe(String prompt) {
         rs.close();
         ps.close();
 
-        int openNoticeQuantity = getOpenShippingNoticeQuantity(stockNum);
-        int neededIncoming = openNoticeQuantity + quantityToAdd;
-
-        // If current replenishment already covers the notice quantity,
-        // do not count the notice again.
-        int extraReplenishmentNeeded = Math.max(0, neededIncoming - replenishment);
-
-        if (quantity + replenishment + extraReplenishmentNeeded > maxStock) {
-            System.out.println("This notice would exceed the maximum stock level.");
-            System.out.println("Current quantity: " + quantity +
-                    ", current replenishment: " + replenishment +
-                    ", open notice quantity: " + openNoticeQuantity +
+        if (quantity + replenishment + quantityToAdd > maxStock) {
+            System.out.println("This shipping notice would exceed the maximum stock level.");
+            System.out.println("Current stock: " + quantity +
+                    ", incoming replenishment: " + replenishment +
                     ", new notice quantity: " + quantityToAdd +
-                    ", max: " + maxStock);
+                    ", max stock level: " + maxStock);
             return false;
         }
 
