@@ -1720,7 +1720,7 @@ static double readDoubleSafe(String prompt) {
 
         System.out.println("\n" + String.format("%-10s %-15s %-15s %-8s %-8s %-8s %-10s %s",
                 "Stock#", "Manufacturer", "Model", "Qty", "Min", "Max", "Location", "Repl"));
-        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println("-------------------------------------------------------------------------------------");
 
         boolean found = false;
         while (rs.next()) {
@@ -1808,6 +1808,9 @@ static double readDoubleSafe(String prompt) {
         int minStock = 0;
         int maxStock = 0;
         String location = null;
+        String category = null;
+        int warranty = 0;
+        double price = 0;
         int replenishmentToAdd = 0;
 
         if (stockNum == null) {
@@ -1825,6 +1828,16 @@ static double readDoubleSafe(String prompt) {
             minStock = readNonNegativeInt("Enter Minimum Stock Level: ");
             maxStock = readNonNegativeInt("Enter Maximum Stock Level: ");
             location = readText("Enter Warehouse Location, for example A1: ");
+            category = readText("Enter Product Category: ");
+            warranty = readNonNegativeInt("Enter Warranty Months: ");
+            price = readDoubleSafe("Enter Product Price: ");
+
+            if (!validText(category, "Category")) return false;
+            if (warranty < 0) return false;
+            if (price < 0) {
+                System.out.println("Price cannot be negative.");
+                return false;
+            }
 
             if (minStock < 0 || maxStock < 0) return false;
 
@@ -1876,6 +1889,7 @@ static double readDoubleSafe(String prompt) {
         try {
             if (newProduct) {
                 insertInventoryProduct(stockNum, manufacturer, modelNum, minStock, maxStock, location);
+                insertProductCatalog(stockNum, category, manufacturer, modelNum, warranty, price);
             }
 
             PreparedStatement ps1 = con.prepareStatement(
@@ -2369,6 +2383,24 @@ static double readDoubleSafe(String prompt) {
         rs.close();
         ps.close();
         return exists;
+    }
+
+    static void insertProductCatalog(String stockNum, String category, String manufacturer, String modelNum, int warranty, double price) throws SQLException {
+        PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO Products " +
+                "(StockNumber, Category, Manufacturer, ModelNumber, Warranty, Price) " +
+                "VALUES (?, ?, ?, ?, ?, ?)"
+        );
+
+        ps.setString(1, stockNum);
+        ps.setString(2, category);
+        ps.setString(3, manufacturer);
+        ps.setString(4, modelNum);
+        ps.setInt(5, warranty);
+        ps.setDouble(6, price);
+
+        ps.executeUpdate();
+        ps.close();
     }
 
     static boolean shippingNoticeExists(String noticeId, String stockNum) throws SQLException {
