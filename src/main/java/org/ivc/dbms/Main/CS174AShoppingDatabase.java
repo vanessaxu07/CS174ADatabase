@@ -1508,6 +1508,7 @@ static void adjustCustomerStatus() throws SQLException {
 
     ps.close();
 }
+
 static void sendOrderToManufacturer() throws SQLException {
     System.out.print("Enter Manufacturer name: ");
     String mfr = scanner.nextLine();
@@ -1516,6 +1517,10 @@ static void sendOrderToManufacturer() throws SQLException {
     if (stockNum == null) return;
 
     int quantity = readIntSafe("Enter Quantity to order: ");
+    if (quantity <= 0) {
+        System.out.println("Quantity must be greater than 0.");
+        return;
+    }
 
     PreparedStatement prodCheck = con.prepareStatement(
         "SELECT StockNumber, Manufacturer, ModelNumber, Price " +
@@ -1536,36 +1541,7 @@ static void sendOrderToManufacturer() throws SQLException {
         return;
     }
 
-    String replenishmentId = "REP-" + System.currentTimeMillis();
-
-    PreparedStatement insertRep = con.prepareStatement(
-        "INSERT INTO ReplenishmentOrder " +
-        "(replenishment_order_id, stock_number, quantity_ordered, replenishment_order_date, status) " +
-        "VALUES (?, ?, ?, ?, ?)"
-    );
-
-    insertRep.setString(1, replenishmentId);
-    insertRep.setString(2, stockNum);
-    insertRep.setInt(3, quantity);
-    insertRep.setDate(4, java.sql.Date.valueOf(java.time.LocalDate.now()));
-    insertRep.setString(5, "ordered");
-
-    insertRep.executeUpdate();
-    insertRep.close();
-
-    PreparedStatement updateRep = con.prepareStatement(
-        "UPDATE InventoryProduct " +
-        "SET replenishment = replenishment + ? " +
-        "WHERE TRIM(stock_number) = TRIM(?)"
-    );
-
-    updateRep.setInt(1, quantity);
-    updateRep.setString(2, stockNum);
-
-    updateRep.executeUpdate();
-    updateRep.close();
-
-    System.out.println("\n--- Order to Manufacturer ---");
+    System.out.println("\n------ Order to Manufacturer ------");
     System.out.println("Manufacturer: " + rs.getString("Manufacturer"));
     System.out.println("Stock#:       " + rs.getString("StockNumber"));
     System.out.println("Model:        " + rs.getString("ModelNumber"));
@@ -1847,7 +1823,6 @@ static double readDoubleSafe(String prompt) {
             }
 
             if (!validLocation(location)) return false;
-            location = location.toUpperCase();
 
             if (quantity > maxStock) {
                 System.out.println("Quantity in notice would exceed the maximum stock level for this new product.");
@@ -2114,6 +2089,7 @@ static double readDoubleSafe(String prompt) {
                 "GROUP BY manufacturer_name " +
                 "HAVING COUNT(*) >= 3"
         );
+
         ResultSet rs = findPs.executeQuery();
         while (rs.next()) {
             manufacturers.add(rs.getString("manufacturer_name").trim());
@@ -2139,8 +2115,10 @@ static double readDoubleSafe(String prompt) {
                         "AND quantity < max_stock_level " +
                         "AND max_stock_level - quantity - replenishment > 0"
                 );
+
                 insertPs.setString(1, replenishmentOrderId);
                 insertPs.setString(2, manufacturer);
+
                 int rows = insertPs.executeUpdate();
                 insertPs.close();
 
@@ -2149,30 +2127,12 @@ static double readDoubleSafe(String prompt) {
                     continue;
                 }
 
-                PreparedStatement updatePs = con.prepareStatement(
-                        "UPDATE InventoryProduct ip " +
-                        "SET replenishment = replenishment + (" +
-                        "    SELECT ro.quantity_ordered " +
-                        "    FROM ReplenishmentOrder ro " +
-                        "    WHERE ro.replenishment_order_id = ? " +
-                        "    AND TRIM(ro.stock_number) = TRIM(ip.stock_number)" +
-                        ") " +
-                        "WHERE EXISTS (" +
-                        "    SELECT 1 FROM ReplenishmentOrder ro " +
-                        "    WHERE ro.replenishment_order_id = ? " +
-                        "    AND TRIM(ro.stock_number) = TRIM(ip.stock_number)" +
-                        ")"
-                );
-                updatePs.setString(1, replenishmentOrderId);
-                updatePs.setString(2, replenishmentOrderId);
-                updatePs.executeUpdate();
-                updatePs.close();
-
                 System.out.println("Replenishment order created: " + replenishmentOrderId +
                         " for " + manufacturer + " | rows: " + rows);
             }
 
             con.commit();
+
         } catch (SQLException e) {
             con.rollback();
             System.out.println("Generate replenishment order failed: " + e.getMessage());
