@@ -450,16 +450,17 @@ public class CS174AShoppingDatabase {
         ps.setString(2, attrVal);
 
     } else if (choice == 6) {
-        String val = readStockNumber("Enter Stock Number to find compatible items: ");
-        if (val == null) return;
+    String val = readStockNumber("Enter Stock Number to find compatible items: ");
+    if (val == null) return;
 
-        ps = con.prepareStatement(
-            "SELECT p.StockNumber, p.Category, p.Manufacturer, p.ModelNumber, p.Price, p.Warranty " +
-            "FROM Products p " +
-            "JOIN Product_Compatibility pc ON TRIM(p.StockNumber) = TRIM(pc.StockNumber) " +
-            "WHERE TRIM(pc.CompatibleWithNumber) = TRIM(?)"
-        );
-        ps.setString(1, val);
+    ps = con.prepareStatement(
+    "SELECT p.StockNumber, p.Category, p.Manufacturer, p.ModelNumber, p.Price, p.Warranty " +
+    "FROM Products p " +
+    "JOIN Product_Compatibility pc " +
+    "ON TRIM(p.StockNumber) = TRIM(pc.CompatibleWithNumber) " +
+    "WHERE TRIM(pc.StockNumber) = TRIM(?)"
+);
+    ps.setString(1, val);
     } else {
         System.out.println("Invalid choice.");
         return;
